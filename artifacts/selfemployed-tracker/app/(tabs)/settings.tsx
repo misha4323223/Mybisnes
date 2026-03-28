@@ -14,7 +14,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -47,30 +46,42 @@ export default function SettingsScreen() {
   };
 
   const handleToggleNotifications = async (value: boolean) => {
+    console.log("[Settings] toggle notifications:", value, "platform:", Platform.OS);
     if (Platform.OS === "web") {
-      Alert.alert("Недоступно", "Уведомления работают только в мобильном приложении.");
+      Alert.alert(
+        "Только в мобильном приложении",
+        "Уведомления работают только на Android и iOS. Откройте приложение через Expo Go."
+      );
       return;
     }
+    // Optimistic update only for native
     setNotificationsOn(value);
     if (value) {
       const result = await enableNotifications();
+      console.log("[Settings] enableNotifications result:", result);
       if (result === "granted") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
           "Уведомления включены",
           "Напоминания запланированы на 23-е в 10:00 и 24-е в 18:00 каждого месяца."
         );
+      } else if (result === "saved") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          "Настройка сохранена",
+          "Предпочтение сохранено. Уведомления будут работать в следующий раз при наличии разрешения."
+        );
       } else if (result === "denied") {
         setNotificationsOn(false);
         Alert.alert(
           "Нет разрешения",
-          "Разрешите уведомления в системных настройках телефона для этого приложения, затем попробуйте снова."
+          "Зайдите в Настройки телефона → Приложения → найдите это приложение → включите Уведомления."
         );
       } else {
         setNotificationsOn(false);
         Alert.alert(
           "Не удалось включить",
-          "Уведомления не поддерживаются в этой версии приложения. Попробуйте установить нативную сборку."
+          "Функция уведомлений недоступна. Проверьте, что Expo Go обновлён до последней версии."
         );
       }
     } else {
@@ -200,12 +211,14 @@ export default function SettingsScreen() {
                   : "23-го и 24-го числа каждого месяца"}
               </Text>
             </View>
-            <Switch
-              value={notificationsOn}
-              onValueChange={handleToggleNotifications}
-              trackColor={{ false: Colors.border, true: Colors.primaryLight }}
-              thumbColor="#fff"
-            />
+            <TouchableOpacity
+              style={[styles.toggle, notificationsOn && styles.toggleOn]}
+              onPress={() => handleToggleNotifications(!notificationsOn)}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <View style={[styles.toggleThumb, notificationsOn && styles.toggleThumbOn]} />
+            </TouchableOpacity>
           </View>
           {notificationsOn && Platform.OS !== "web" && (
             <View style={styles.notifHint}>
@@ -370,6 +383,33 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: Colors.primaryLight,
+  },
+  toggle: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.border,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    flexShrink: 0,
+  },
+  toggleOn: {
+    backgroundColor: Colors.primaryLight,
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+    alignSelf: "flex-start",
+  },
+  toggleThumbOn: {
+    alignSelf: "flex-end",
   },
   menuItem: {
     flexDirection: "row",

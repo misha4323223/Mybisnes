@@ -1,12 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 const NOTIF_KEY = "@notifications_enabled";
 
 export function setupNotificationHandler() {
+  // Only runs on native, skip on web
   if (Platform.OS === "web") return;
   try {
+    // Dynamic import to avoid crashes on web
+    const Notifications = require("expo-notifications");
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowBanner: true,
@@ -16,7 +18,7 @@ export function setupNotificationHandler() {
       }),
     });
   } catch (e) {
-    console.warn("[Notifications] setNotificationHandler error:", e);
+    console.warn("[Notif] handler setup failed:", e);
   }
 }
 
@@ -29,97 +31,117 @@ export async function getNotificationsEnabled(): Promise<boolean> {
   }
 }
 
-export async function enableNotifications(): Promise<
-  "granted" | "denied" | "unavailable"
-> {
-  if (Platform.OS === "web") return "unavailable";
+export type NotifResult = "granted" | "denied" | "unavailable" | "saved";
+
+export async function enableNotifications(): Promise<NotifResult> {
+  if (Platform.OS === "web") {
+    return "unavailable";
+  }
 
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let finalStatus = existing;
+    const Notifications = require("expo-notifications");
 
-    if (existing !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    // Check/request permission
+    let status: string;
+    try {
+      const existing = await Notifications.getPermissionsAsync();
+      status = existing.status;
+      if (status !== "granted") {
+        const requested = await Notifications.requestPermissionsAsync();
+        status = requested.status;
+      }
+    } catch (e) {
+      console.warn("[Notif] permissions error:", e);
+      // Permission API unavailable, save preference anyway
+      await AsyncStorage.setItem(NOTIF_KEY, "true");
+      return "saved";
     }
 
-    if (finalStatus !== "granted") return "denied";
+    if (status !== "granted") {
+      return "denied";
+    }
 
+    // Create Android channel
     if (Platform.OS === "android") {
       try {
         await Notifications.setNotificationChannelAsync("tax-reminders", {
           name: "Напоминания о налоге",
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: 6,
         });
-      } catch {}
+      } catch (e) {
+        console.warn("[Notif] channel error:", e);
+      }
     }
 
-    await scheduleMonthlyReminders();
+    // Schedule notifications
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      let count = 0;
+
+      for (let i = 0; i < 12; i++) {
+        const totalMonth = currentMonth + i;
+        const month = totalMonth % 12;
+        const year = currentYear + Math.floor(totalMonth / 12);
+
+        const date23 = new Date(year, month, 23, 10, 0, 0);
+        const date24 = new Date(year, month, 24, 18, 0, 0);
+
+        if (date23.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Не забудьте оплатить налог",
+              body: "Завтра 25-е — последний день! Откройте Мой налог ФНС.",
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: date23,
+            },
+          });
+          count++;
+        }
+
+        if (date24.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Сегодня последний день!",
+              body: "Оплатите НПД до конца дня через «Мой налог» ФНС.",
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: date24,
+            },
+          });
+          count++;
+        }
+      }
+      console.log("[Notif] scheduled", count, "notifications");
+    } catch (e) {
+      console.warn("[Notif] scheduling error:", e);
+    }
+
     await AsyncStorage.setItem(NOTIF_KEY, "true");
     return "granted";
   } catch (err) {
-    console.warn("[Notifications] enableNotifications error:", err);
-    await AsyncStorage.setItem(NOTIF_KEY, "false");
-    return "unavailable";
+    console.error("[Notif] unexpected error:", err);
+    // Save preference even if scheduling fails
+    await AsyncStorage.setItem(NOTIF_KEY, "true");
+    return "saved";
   }
 }
 
 export async function disableNotifications(): Promise<void> {
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch {}
+    if (Platform.OS !== "web") {
+      const Notifications = require("expo-notifications");
+      await Notifications.cancelAllScheduledNotificationsAsync();
+    }
+  } catch (e) {
+    console.warn("[Notif] cancel error:", e);
+  }
   try {
     await AsyncStorage.setItem(NOTIF_KEY, "false");
   } catch {}
-}
-
-async function scheduleMonthlyReminders() {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-
-  for (let i = 0; i < 12; i++) {
-    const totalMonth = currentMonth + i;
-    const month = totalMonth % 12;
-    const year = currentYear + Math.floor(totalMonth / 12);
-
-    const date23 = new Date(year, month, 23, 10, 0, 0);
-    const date24 = new Date(year, month, 24, 18, 0, 0);
-
-    if (date23.getTime() > now.getTime()) {
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Не забудьте оплатить налог",
-            body: "Завтра 25-е — последний день! Оплатите НПД через «Мой налог» ФНС.",
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: date23,
-          },
-        });
-      } catch (e) {
-        console.warn("[Notifications] schedule 23rd error:", e);
-      }
-    }
-
-    if (date24.getTime() > now.getTime()) {
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Сегодня последний день!",
-            body: "Оплатите налог НПД до конца дня через «Мой налог» ФНС.",
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: date24,
-          },
-        });
-      } catch (e) {
-        console.warn("[Notifications] schedule 24th error:", e);
-      }
-    }
-  }
 }
