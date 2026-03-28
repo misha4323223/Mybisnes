@@ -19,9 +19,17 @@ function NativeTabLayout() {
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
         <Label>Аналитика</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="calculator">
+        <Icon sf={{ default: "percent", selected: "percent" }} />
+        <Label>Калькулятор</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tax">
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Налоги</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
+        <Label>Настройки</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -49,7 +57,7 @@ function ClassicTabLayout() {
         },
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
-          fontSize: 11,
+          fontSize: 10,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -71,9 +79,9 @@ function ClassicTabLayout() {
           title: "Главная",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={24} />
+              <SymbolView name="house" tintColor={color} size={22} />
             ) : (
-              <Feather name="home" size={22} color={color} />
+              <Feather name="home" size={21} color={color} />
             ),
         }}
       />
@@ -83,9 +91,21 @@ function ClassicTabLayout() {
           title: "Аналитика",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={24} />
+              <SymbolView name="chart.bar" tintColor={color} size={22} />
             ) : (
-              <Feather name="bar-chart-2" size={22} color={color} />
+              <Feather name="bar-chart-2" size={21} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="calculator"
+        options={{
+          title: "Калькулятор",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="percent" tintColor={color} size={22} />
+            ) : (
+              <Feather name="percent" size={21} color={color} />
             ),
         }}
       />
@@ -95,9 +115,21 @@ function ClassicTabLayout() {
           title: "Налоги",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="doc.text" tintColor={color} size={24} />
+              <SymbolView name="doc.text" tintColor={color} size={22} />
             ) : (
-              <Feather name="file-text" size={22} color={color} />
+              <Feather name="file-text" size={21} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Настройки",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="gearshape" tintColor={color} size={22} />
+            ) : (
+              <Feather name="settings" size={21} color={color} />
             ),
         }}
       />
