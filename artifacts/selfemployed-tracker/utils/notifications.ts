@@ -4,15 +4,17 @@ import { Platform } from "react-native";
 
 const NOTIF_KEY = "@notifications_enabled";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+export function setupNotificationHandler() {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function getNotificationsEnabled(): Promise<boolean> {
   try {
@@ -23,13 +25,16 @@ export async function getNotificationsEnabled(): Promise<boolean> {
   }
 }
 
-export async function enableNotifications(): Promise<"granted" | "denied" | "unavailable"> {
+export async function enableNotifications(): Promise<
+  "granted" | "denied" | "unavailable"
+> {
   if (Platform.OS === "web") return "unavailable";
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
 
-    if (existingStatus !== "granted") {
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+
+    if (existing !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
@@ -37,17 +42,20 @@ export async function enableNotifications(): Promise<"granted" | "denied" | "una
     if (finalStatus !== "granted") return "denied";
 
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("tax-reminders", {
-        name: "Напоминания о налоге",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-      });
+      try {
+        await Notifications.setNotificationChannelAsync("tax-reminders", {
+          name: "Напоминания о налоге",
+          importance: Notifications.AndroidImportance.HIGH,
+        });
+      } catch {}
     }
 
     await scheduleMonthlyReminders();
     await AsyncStorage.setItem(NOTIF_KEY, "true");
     return "granted";
-  } catch (e) {
+  } catch (err) {
+    console.warn("[Notifications] enableNotifications error:", err);
+    await AsyncStorage.setItem(NOTIF_KEY, "false");
     return "unavailable";
   }
 }
@@ -55,6 +63,8 @@ export async function enableNotifications(): Promise<"granted" | "denied" | "una
 export async function disableNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {}
+  try {
     await AsyncStorage.setItem(NOTIF_KEY, "false");
   } catch {}
 }
@@ -67,38 +77,45 @@ async function scheduleMonthlyReminders() {
   const currentMonth = now.getMonth();
 
   for (let i = 0; i < 12; i++) {
-    const month = (currentMonth + i) % 12;
-    const year = currentYear + Math.floor((currentMonth + i) / 12);
+    const totalMonth = currentMonth + i;
+    const month = totalMonth % 12;
+    const year = currentYear + Math.floor(totalMonth / 12);
 
     const date23 = new Date(year, month, 23, 10, 0, 0);
     const date24 = new Date(year, month, 24, 18, 0, 0);
 
-    if (date23 > now) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Не забудьте оплатить налог",
-          body: "Завтра 25-е — последний день! Оплатите НПД в приложении «Мой налог» ФНС.",
-          ...(Platform.OS === "android" && { channelId: "tax-reminders" }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: date23,
-        },
-      });
+    if (date23.getTime() > now.getTime()) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Не забудьте оплатить налог",
+            body: "Завтра 25-е — последний день! Оплатите НПД через «Мой налог» ФНС.",
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: date23,
+          },
+        });
+      } catch (e) {
+        console.warn("[Notifications] schedule 23rd error:", e);
+      }
     }
 
-    if (date24 > now) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Сегодня последний день!",
-          body: "Оплатите налог НПД до конца дня через «Мой налог» ФНС.",
-          ...(Platform.OS === "android" && { channelId: "tax-reminders" }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: date24,
-        },
-      });
+    if (date24.getTime() > now.getTime()) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Сегодня последний день!",
+            body: "Оплатите налог НПД до конца дня через «Мой налог» ФНС.",
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: date24,
+          },
+        });
+      } catch (e) {
+        console.warn("[Notifications] schedule 24th error:", e);
+      }
     }
   }
 }

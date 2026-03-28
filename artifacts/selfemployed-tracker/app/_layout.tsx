@@ -15,8 +15,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
+import { setupNotificationHandler } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
+setupNotificationHandler();
 
 const queryClient = new QueryClient();
 

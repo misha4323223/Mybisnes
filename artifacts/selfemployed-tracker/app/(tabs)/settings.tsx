@@ -51,29 +51,30 @@ export default function SettingsScreen() {
       Alert.alert("Недоступно", "Уведомления работают только в мобильном приложении.");
       return;
     }
+    setNotificationsOn(value);
     if (value) {
       const result = await enableNotifications();
       if (result === "granted") {
-        setNotificationsOn(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
           "Уведомления включены",
           "Напоминания запланированы на 23-е в 10:00 и 24-е в 18:00 каждого месяца."
         );
       } else if (result === "denied") {
+        setNotificationsOn(false);
         Alert.alert(
           "Нет разрешения",
-          "Разрешите уведомления в системных настройках телефона для этого приложения."
+          "Разрешите уведомления в системных настройках телефона для этого приложения, затем попробуйте снова."
         );
       } else {
+        setNotificationsOn(false);
         Alert.alert(
           "Не удалось включить",
-          "Уведомления не удалось запланировать. Попробуйте перезапустить приложение."
+          "Уведомления не поддерживаются в этой версии приложения. Попробуйте установить нативную сборку."
         );
       }
     } else {
       await disableNotifications();
-      setNotificationsOn(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
