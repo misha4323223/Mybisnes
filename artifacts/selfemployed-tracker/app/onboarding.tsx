@@ -4,14 +4,13 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
-  FlatList,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -61,15 +60,7 @@ const ONBOARDING_KEY = "@onboarding_done";
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
-  const listRef = useRef<FlatList>(null);
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0) {
-        setActiveIndex(viewableItems[0].index ?? 0);
-      }
-    }
-  ).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const finish = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
@@ -78,13 +69,26 @@ export default function OnboardingScreen() {
 
   const goNext = () => {
     if (activeIndex < SLIDES.length - 1) {
-      listRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      setActiveIndex(activeIndex + 1);
     } else {
       finish();
     }
   };
 
   const isLast = activeIndex === SLIDES.length - 1;
+  const slide = SLIDES[activeIndex];
 
   return (
     <View
@@ -100,25 +104,13 @@ export default function OnboardingScreen() {
         <Text style={styles.skipText}>Пропустить</Text>
       </TouchableOpacity>
 
-      <FlatList
-        ref={listRef}
-        data={SLIDES}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(s) => s.id}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { width }]}>
-            <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-              <Feather name={item.icon} size={56} color={item.iconColor} />
-            </View>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.text}>{item.text}</Text>
-          </View>
-        )}
-      />
+      <Animated.View style={[styles.slide, { opacity: fadeAnim }]}>
+        <View style={[styles.iconCircle, { backgroundColor: slide.iconBg }]}>
+          <Feather name={slide.icon} size={56} color={slide.iconColor} />
+        </View>
+        <Text style={styles.title}>{slide.title}</Text>
+        <Text style={styles.text}>{slide.text}</Text>
+      </Animated.View>
 
       <View style={styles.bottom}>
         <View style={styles.dots}>
