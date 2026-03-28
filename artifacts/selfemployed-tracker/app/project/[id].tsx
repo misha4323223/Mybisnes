@@ -1,3 +1,4 @@
+import { AddProjectSheet } from "@/components/AddProjectSheet";
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
@@ -40,6 +41,7 @@ export default function ProjectDetailScreen() {
 
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(project?.description ?? "");
+  const [showEdit, setShowEdit] = useState(false);
 
   if (!project) {
     return (
@@ -97,9 +99,14 @@ export default function ProjectDetailScreen() {
           <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>Детали</Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn} activeOpacity={0.7}>
-          <Feather name="trash-2" size={20} color={Colors.danger} />
-        </TouchableOpacity>
+        <View style={styles.navActions}>
+          <TouchableOpacity onPress={() => setShowEdit(true)} style={styles.editNavBtn} activeOpacity={0.7}>
+            <Feather name="edit-2" size={18} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn} activeOpacity={0.7}>
+            <Feather name="trash-2" size={18} color={Colors.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -205,6 +212,12 @@ export default function ProjectDetailScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <AddProjectSheet
+        visible={showEdit}
+        onClose={() => setShowEdit(false)}
+        projectToEdit={project}
+      />
     </View>
   );
 }
@@ -237,6 +250,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: Colors.textPrimary,
     textAlign: "center",
+  },
+  navActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  editNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#E8F5E9",
+    alignItems: "center",
+    justifyContent: "center",
   },
   deleteBtn: {
     width: 36,

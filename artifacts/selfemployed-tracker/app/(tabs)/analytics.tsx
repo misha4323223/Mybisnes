@@ -1,12 +1,14 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -73,6 +75,31 @@ export default function AnalyticsScreen() {
 
   const paidCount = projects.filter((p) => p.isPaid).length;
   const unpaidCount = projects.filter((p) => !p.isPaid).length;
+
+  if (projects.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: topPad + 16 }]}>
+        <Text style={[styles.pageTitle, { paddingHorizontal: 16 }]}>Аналитика</Text>
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="bar-chart-2" size={36} color={Colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>Нет данных для анализа</Text>
+          <Text style={styles.emptyText}>
+            Добавьте доходы на главном экране,{"\n"}чтобы увидеть статистику
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyBtn}
+            onPress={() => router.push("/(tabs)/")}
+            activeOpacity={0.85}
+          >
+            <Feather name="arrow-left" size={16} color="#fff" />
+            <Text style={styles.emptyBtnText}>На главную</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -338,5 +365,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 20,
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 32,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    color: Colors.textPrimary,
+    textAlign: "center",
+  },
+  emptyText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  emptyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+    marginTop: 8,
+  },
+  emptyBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: "#fff",
   },
 });

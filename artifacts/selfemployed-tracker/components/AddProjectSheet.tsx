@@ -1,8 +1,8 @@
 import Colors from "@/constants/colors";
-import { IncomeSource, useApp } from "@/context/AppContext";
+import { IncomeSource, Project, useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface Props {
   visible: boolean;
   onClose: () => void;
+  projectToEdit?: Project;
 }
 
 const SOURCES: { key: IncomeSource; label: string }[] = [
@@ -29,15 +30,38 @@ const SOURCES: { key: IncomeSource; label: string }[] = [
   { key: "other", label: "Другое" },
 ];
 
-export function AddProjectSheet({ visible, onClose }: Props) {
-  const { addProject } = useApp();
+export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
+  const { addProject, updateProject } = useApp();
   const insets = useSafeAreaInsets();
+
+  const isEdit = !!projectToEdit;
+
   const [name, setName] = useState("");
   const [clientName, setClientName] = useState("");
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState<IncomeSource>("project");
   const [isPaid, setIsPaid] = useState(false);
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (visible) {
+      if (projectToEdit) {
+        setName(projectToEdit.name);
+        setClientName(projectToEdit.clientName === "Без клиента" ? "" : projectToEdit.clientName);
+        setAmount(projectToEdit.amount.toString());
+        setSource(projectToEdit.source);
+        setIsPaid(projectToEdit.isPaid);
+        setDescription(projectToEdit.description ?? "");
+      } else {
+        setName("");
+        setClientName("");
+        setAmount("");
+        setSource("project");
+        setIsPaid(false);
+        setDescription("");
+      }
+    }
+  }, [visible, projectToEdit]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -49,22 +73,29 @@ export function AddProjectSheet({ visible, onClose }: Props) {
       Alert.alert("Укажите корректную сумму");
       return;
     }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addProject({
-      name: name.trim(),
-      clientName: clientName.trim() || "Без клиента",
-      amount: amt,
-      source,
-      date: new Date().toISOString(),
-      isPaid,
-      description: description.trim(),
-    });
-    setName("");
-    setClientName("");
-    setAmount("");
-    setSource("project");
-    setIsPaid(false);
-    setDescription("");
+
+    if (isEdit && projectToEdit) {
+      updateProject(projectToEdit.id, {
+        name: name.trim(),
+        clientName: clientName.trim() || "Без клиента",
+        amount: amt,
+        source,
+        isPaid,
+        description: description.trim(),
+      });
+    } else {
+      addProject({
+        name: name.trim(),
+        clientName: clientName.trim() || "Без клиента",
+        amount: amt,
+        source,
+        date: new Date().toISOString(),
+        isPaid,
+        description: description.trim(),
+      });
+    }
     onClose();
   };
 
@@ -82,7 +113,7 @@ export function AddProjectSheet({ visible, onClose }: Props) {
         <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>Новый доход</Text>
+            <Text style={styles.title}>{isEdit ? "Редактировать" : "Новый доход"}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Feather name="x" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
@@ -180,7 +211,7 @@ export function AddProjectSheet({ visible, onClose }: Props) {
           </ScrollView>
 
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={styles.saveBtnText}>Добавить доход</Text>
+            <Text style={styles.saveBtnText}>{isEdit ? "Сохранить изменения" : "Добавить доход"}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

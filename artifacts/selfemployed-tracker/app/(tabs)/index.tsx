@@ -125,21 +125,34 @@ export default function HomeScreen() {
     </>
   );
 
+  const isFiltering = search || filter !== "all";
   const EmptyState = (
     <View style={styles.empty}>
-      <Feather
-        name={search || filter !== "all" ? "search" : "briefcase"}
-        size={48}
-        color={Colors.border}
-      />
+      <View style={styles.emptyIconWrap}>
+        <Feather
+          name={isFiltering ? "search" : "briefcase"}
+          size={36}
+          color={isFiltering ? Colors.textMuted : Colors.primary}
+        />
+      </View>
       <Text style={styles.emptyTitle}>
-        {search || filter !== "all" ? "Ничего не найдено" : "Нет записей"}
+        {isFiltering ? "Ничего не найдено" : "Пока нет доходов"}
       </Text>
       <Text style={styles.emptyText}>
-        {search || filter !== "all"
+        {isFiltering
           ? "Попробуйте изменить поиск или фильтр"
-          : "Нажмите + чтобы добавить\nпервый доход"}
+          : "Добавьте первый доход, чтобы\nначать отслеживать финансы"}
       </Text>
+      {!isFiltering && (
+        <TouchableOpacity
+          style={styles.emptyBtn}
+          onPress={() => setShowAdd(true)}
+          activeOpacity={0.85}
+        >
+          <Feather name="plus" size={16} color="#fff" />
+          <Text style={styles.emptyBtnText}>Добавить доход</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -254,19 +267,42 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: "center",
     paddingTop: 40,
-    gap: 8,
+    gap: 10,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   emptyTitle: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     fontSize: 18,
-    color: Colors.textSecondary,
-    marginTop: 12,
+    color: Colors.textPrimary,
   },
   emptyText: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
     color: Colors.textMuted,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
+  },
+  emptyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+    marginTop: 8,
+  },
+  emptyBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: "#fff",
   },
 });
