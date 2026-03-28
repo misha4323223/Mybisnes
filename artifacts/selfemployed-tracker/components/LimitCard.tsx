@@ -21,24 +21,33 @@ export function LimitCard() {
     : Colors.primary;
 
   const year = new Date().getFullYear();
-
   const now = new Date();
-  const monthsElapsed = now.getMonth() + 1 + now.getDate() / 30;
+
   const currentYearProjects = projects.filter(
     (p) => new Date(p.date).getFullYear() === year
   );
-  const monthlyAvg = currentYearProjects.length > 0 && monthsElapsed > 0
-    ? yearlyIncome / monthsElapsed
-    : 0;
 
   let forecastText: string | null = null;
-  if (monthlyAvg > 0 && remaining > 0) {
-    const monthsLeft = remaining / monthlyAvg;
-    if (monthsLeft < 1) {
-      forecastText = "Лимит достигнете меньше чем через месяц";
-    } else if (monthsLeft < 12) {
-      const rounded = Math.round(monthsLeft);
-      forecastText = `При текущем темпе лимит через ~${rounded} мес.`;
+
+  if (currentYearProjects.length > 0 && yearlyIncome > 0) {
+    const monthsElapsed = now.getMonth() + 1 + now.getDate() / 30;
+    const monthlyAvg = yearlyIncome / monthsElapsed;
+
+    if (remaining === 0) {
+      forecastText = "Лимит уже достигнут — проконсультируйтесь с налоговой.";
+    } else if (monthlyAvg > 0) {
+      const monthsLeft = remaining / monthlyAvg;
+      if (monthsLeft < 1) {
+        forecastText = "При текущем темпе лимит достигнете меньше чем через месяц!";
+      } else if (monthsLeft < 12) {
+        const rounded = Math.round(monthsLeft);
+        forecastText = `При текущем темпе лимит через ~${rounded} мес.`;
+      } else if (monthsLeft < 120) {
+        const years = (monthsLeft / 12).toFixed(1);
+        forecastText = `При текущем темпе лимит через ~${years} лет.`;
+      } else {
+        forecastText = "При текущем темпе лимит в этом году не достигнете.";
+      }
     }
   }
 
@@ -77,7 +86,7 @@ export function LimitCard() {
 
       {forecastText && !isDanger && !isWarning && (
         <View style={styles.forecast}>
-          <Feather name="clock" size={12} color={Colors.textMuted} />
+          <Feather name="clock" size={12} color={Colors.primary} />
           <Text style={styles.forecastText}>{forecastText}</Text>
         </View>
       )}
@@ -86,17 +95,16 @@ export function LimitCard() {
         <View style={styles.alert}>
           <Feather name="alert-triangle" size={13} color={Colors.danger} />
           <Text style={styles.alertText}>
-            Осталось мало! При превышении лимита вы потеряете статус самозанятого.
+            {forecastText ?? "Осталось мало! При превышении лимита вы потеряете статус самозанятого."}
           </Text>
         </View>
       )}
+
       {isWarning && !isDanger && (
         <View style={[styles.alert, styles.alertWarn]}>
           <Feather name="alert-circle" size={13} color={Colors.accent} />
           <Text style={[styles.alertText, { color: Colors.accent }]}>
-            {forecastText
-              ? forecastText
-              : "Использовано более 75% лимита — следите за доходом."}
+            {forecastText ?? "Использовано более 75% лимита — следите за доходом."}
           </Text>
         </View>
       )}
@@ -128,9 +136,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  titleBlock: {
-    flex: 1,
-  },
+  titleBlock: { flex: 1 },
   title: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
@@ -172,18 +178,19 @@ const styles = StyleSheet.create({
   },
   forecast: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 10,
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 12,
     backgroundColor: Colors.surfaceAlt,
     borderRadius: 8,
-    padding: 8,
+    padding: 10,
   },
   forecastText: {
     flex: 1,
     fontFamily: "Inter_400Regular",
     fontSize: 12,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
+    lineHeight: 17,
   },
   alert: {
     flexDirection: "row",
