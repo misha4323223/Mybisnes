@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +21,11 @@ import {
 } from "react-native";
 
 type FilterType = "all" | "paid" | "unpaid";
+
+const MONTH_NAMES_SHORT = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
 
 export default function HomeScreen() {
   const {
@@ -37,9 +43,28 @@ export default function HomeScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
+  const [periodKey, setPeriodKey] = useState<string>("all");
+
+  const availablePeriods = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of projects) {
+      const d = new Date(p.date);
+      keys.add(`${d.getFullYear()}-${d.getMonth()}`);
+    }
+    return Array.from(keys)
+      .sort((a, b) => b.localeCompare(a))
+      .slice(0, 8);
+  }, [projects]);
 
   const filtered = useMemo(() => {
     let list = projects;
+    if (periodKey !== "all") {
+      const [yr, mn] = periodKey.split("-").map(Number);
+      list = list.filter((p) => {
+        const d = new Date(p.date);
+        return d.getFullYear() === yr && d.getMonth() === mn;
+      });
+    }
     if (filter === "paid") list = list.filter((p) => p.isPaid);
     if (filter === "unpaid") list = list.filter((p) => !p.isPaid);
     if (search.trim()) {
@@ -51,7 +76,7 @@ export default function HomeScreen() {
       );
     }
     return list;
-  }, [projects, filter, search]);
+  }, [projects, filter, search, periodKey]);
 
   if (loading) {
     return (
@@ -61,11 +86,13 @@ export default function HomeScreen() {
     );
   }
 
-  const FILTERS: { key: FilterType; label: string }[] = [
+  const STATUS_FILTERS: { key: FilterType; label: string }[] = [
     { key: "all", label: "Все" },
     { key: "paid", label: "Получено" },
     { key: "unpaid", label: "Ожидают" },
   ];
+
+  const isFiltering = search || filter !== "all" || periodKey !== "all";
 
   const ListHeader = (
     <>
@@ -98,8 +125,44 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {availablePeriods.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.periodRow}
+          style={styles.periodScroll}
+        >
+          <TouchableOpacity
+            style={[styles.periodChip, periodKey === "all" && styles.periodChipActive]}
+            onPress={() => setPeriodKey("all")}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.periodLabel, periodKey === "all" && styles.periodLabelActive]}>
+              Все периоды
+            </Text>
+          </TouchableOpacity>
+          {availablePeriods.map((key) => {
+            const [yr, mn] = key.split("-").map(Number);
+            const label = `${MONTH_NAMES_SHORT[mn]} ${yr}`;
+            const active = periodKey === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.periodChip, active && styles.periodChipActive]}
+                onPress={() => setPeriodKey(key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.periodLabel, active && styles.periodLabelActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <View style={styles.filterRow}>
-        {FILTERS.map((f) => (
+        {STATUS_FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
             style={[styles.filterBtn, filter === f.key && styles.filterBtnActive]}
@@ -121,11 +184,24 @@ export default function HomeScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Доходы</Text>
         <Text style={styles.sectionCount}>{filtered.length}</Text>
+        {isFiltering && (
+          <TouchableOpacity
+            onPress={() => {
+              setSearch("");
+              setFilter("all");
+              setPeriodKey("all");
+            }}
+            style={styles.clearBtn}
+            activeOpacity={0.7}
+          >
+            <Feather name="x" size={13} color={Colors.textMuted} />
+            <Text style={styles.clearBtnText}>Сбросить</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </>
   );
 
-  const isFiltering = search || filter !== "all";
   const EmptyState = (
     <View style={styles.empty}>
       <View style={styles.emptyIconWrap}>
@@ -217,6 +293,35 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     padding: 0,
   },
+  periodScroll: {
+    marginBottom: 10,
+  },
+  periodRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 4,
+  },
+  periodChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  periodChipActive: {
+    backgroundColor: "#1565C0",
+    borderColor: "#1565C0",
+  },
+  periodLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  periodLabelActive: {
+    color: "#fff",
+    fontFamily: "Inter_600SemiBold",
+  },
   filterRow: {
     flexDirection: "row",
     gap: 8,
@@ -263,6 +368,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
+  },
+  clearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: "auto",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  clearBtnText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.textMuted,
   },
   empty: {
     alignItems: "center",

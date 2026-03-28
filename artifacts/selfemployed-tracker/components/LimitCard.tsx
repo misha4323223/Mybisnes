@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from "react-native";
 const ANNUAL_LIMIT = 2_400_000;
 
 export function LimitCard() {
-  const { yearlyIncome } = useApp();
+  const { yearlyIncome, projects } = useApp();
 
   const percent = Math.min(100, (yearlyIncome / ANNUAL_LIMIT) * 100);
   const remaining = Math.max(0, ANNUAL_LIMIT - yearlyIncome);
@@ -21,6 +21,26 @@ export function LimitCard() {
     : Colors.primary;
 
   const year = new Date().getFullYear();
+
+  const now = new Date();
+  const monthsElapsed = now.getMonth() + 1 + now.getDate() / 30;
+  const currentYearProjects = projects.filter(
+    (p) => new Date(p.date).getFullYear() === year
+  );
+  const monthlyAvg = currentYearProjects.length > 0 && monthsElapsed > 0
+    ? yearlyIncome / monthsElapsed
+    : 0;
+
+  let forecastText: string | null = null;
+  if (monthlyAvg > 0 && remaining > 0) {
+    const monthsLeft = remaining / monthlyAvg;
+    if (monthsLeft < 1) {
+      forecastText = "Лимит достигнете меньше чем через месяц";
+    } else if (monthsLeft < 12) {
+      const rounded = Math.round(monthsLeft);
+      forecastText = `При текущем темпе лимит через ~${rounded} мес.`;
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -55,6 +75,13 @@ export function LimitCard() {
         </Text>
       </View>
 
+      {forecastText && !isDanger && !isWarning && (
+        <View style={styles.forecast}>
+          <Feather name="clock" size={12} color={Colors.textMuted} />
+          <Text style={styles.forecastText}>{forecastText}</Text>
+        </View>
+      )}
+
       {isDanger && (
         <View style={styles.alert}>
           <Feather name="alert-triangle" size={13} color={Colors.danger} />
@@ -67,7 +94,9 @@ export function LimitCard() {
         <View style={[styles.alert, styles.alertWarn]}>
           <Feather name="alert-circle" size={13} color={Colors.accent} />
           <Text style={[styles.alertText, { color: Colors.accent }]}>
-            Использовано более 75% лимита — следите за доходом.
+            {forecastText
+              ? forecastText
+              : "Использовано более 75% лимита — следите за доходом."}
           </Text>
         </View>
       )}
@@ -140,6 +169,21 @@ const styles = StyleSheet.create({
   left: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 12,
+  },
+  forecast: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 10,
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 8,
+    padding: 8,
+  },
+  forecastText: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
   },
   alert: {
     flexDirection: "row",

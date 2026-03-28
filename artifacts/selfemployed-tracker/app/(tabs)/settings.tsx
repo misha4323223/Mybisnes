@@ -1,14 +1,20 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import {
+  disableNotifications,
+  enableNotifications,
+  getNotificationsEnabled,
+} from "@/utils/notifications";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -24,18 +30,47 @@ export default function SettingsScreen() {
 
   const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
+  const [notificationsOn, setNotificationsOn] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
       if (v) setName(v);
       setNameLoaded(true);
     });
+    getNotificationsEnabled().then(setNotificationsOn);
   }, []);
 
   const saveName = async () => {
     await AsyncStorage.setItem("@user_name", name);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert("Сохранено");
+  };
+
+  const handleToggleNotifications = async (value: boolean) => {
+    if (Platform.OS === "web") {
+      Alert.alert("Недоступно", "Уведомления работают только в мобильном приложении.");
+      return;
+    }
+    if (value) {
+      const result = await enableNotifications();
+      if (result === "granted") {
+        setNotificationsOn(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          "Уведомления включены",
+          "Вы получите напоминание 23-го и 24-го числа каждого месяца об уплате налога."
+        );
+      } else if (result === "denied") {
+        Alert.alert(
+          "Нет доступа",
+          "Разрешите уведомления в настройках устройства."
+        );
+      }
+    } else {
+      await disableNotifications();
+      setNotificationsOn(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handleExport = async () => {
@@ -141,6 +176,40 @@ export default function SettingsScreen() {
               <Feather name="check" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Уведомления</Text>
+        <View style={styles.card}>
+          <View style={styles.notifRow}>
+            <View style={styles.notifIcon}>
+              <Feather name="bell" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.notifInfo}>
+              <Text style={styles.notifTitle}>Напоминание о налоге</Text>
+              <Text style={styles.notifSub}>
+                {Platform.OS === "web"
+                  ? "Только в мобильном приложении"
+                  : "23-го и 24-го числа каждого месяца"}
+              </Text>
+            </View>
+            <Switch
+              value={notificationsOn}
+              onValueChange={handleToggleNotifications}
+              trackColor={{ false: Colors.border, true: Colors.primaryLight }}
+              thumbColor="#fff"
+              disabled={Platform.OS === "web"}
+            />
+          </View>
+          {notificationsOn && Platform.OS !== "web" && (
+            <View style={styles.notifHint}>
+              <Feather name="check-circle" size={13} color={Colors.primaryLight} />
+              <Text style={styles.notifHintText}>
+                Уведомления включены — 23-го в 10:00 и 24-го в 18:00
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -255,6 +324,47 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  notifIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  notifInfo: { flex: 1 },
+  notifTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  notifSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  notifHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+    padding: 10,
+  },
+  notifHintText: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.primaryLight,
   },
   menuItem: {
     flexDirection: "row",

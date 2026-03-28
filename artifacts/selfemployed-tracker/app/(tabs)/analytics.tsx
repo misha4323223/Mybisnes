@@ -76,6 +76,16 @@ export default function AnalyticsScreen() {
   const paidCount = projects.filter((p) => p.isPaid).length;
   const unpaidCount = projects.filter((p) => !p.isPaid).length;
 
+  const clientMap: Record<string, number> = {};
+  for (const p of projects) {
+    const name = p.clientName || "Без клиента";
+    clientMap[name] = (clientMap[name] || 0) + p.amount;
+  }
+  const topClients = Object.entries(clientMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const maxClient = topClients[0]?.[1] || 1;
+
   if (projects.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: topPad + 16 }]}>
@@ -174,6 +184,24 @@ export default function AnalyticsScreen() {
               <Text style={styles.sourceLabel}>{sourceLabels[key] ?? key}</Text>
               <Bar ratio={val / total} color={COLORS[i % COLORS.length]} />
               <Text style={styles.sourceVal}>{val.toLocaleString("ru-RU")} ₽</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {topClients.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Топ клиентов</Text>
+          {topClients.map(([clientName, amount], i) => (
+            <View key={clientName} style={styles.clientRow}>
+              <View style={styles.clientRank}>
+                <Text style={styles.clientRankText}>{i + 1}</Text>
+              </View>
+              <Text style={styles.clientName} numberOfLines={1}>{clientName}</Text>
+              <View style={styles.clientBarWrap}>
+                <View style={[styles.clientBarFill, { width: `${Math.round((amount / maxClient) * 100)}%`, backgroundColor: COLORS[i % COLORS.length] }]} />
+              </View>
+              <Text style={styles.clientAmount}>{amount >= 1000 ? `${Math.round(amount / 1000)}к` : amount} ₽</Text>
             </View>
           ))}
         </View>
@@ -365,6 +393,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 20,
+  },
+  clientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  clientRank: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  clientRankText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  clientName: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.textPrimary,
+    width: 90,
+    flexShrink: 0,
+  },
+  clientBarWrap: {
+    flex: 1,
+    height: 8,
+    backgroundColor: Colors.border,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  clientBarFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  clientAmount: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: Colors.textPrimary,
+    flexShrink: 0,
+    width: 52,
+    textAlign: "right",
   },
   emptyWrap: {
     flex: 1,
