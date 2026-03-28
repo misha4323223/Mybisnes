@@ -2,6 +2,7 @@ import Colors from "@/constants/colors";
 import { Project } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import React, { useRef } from "react";
 import {
   Animated,
@@ -34,11 +35,17 @@ export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props)
   const date = new Date(project.date);
   const dateStr = date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 
+  const isSwiping = useRef(false);
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_e, gs) =>
         Math.abs(gs.dx) > 8 && Math.abs(gs.dy) < 20,
+      onPanResponderGrant: () => {
+        isSwiping.current = false;
+      },
       onPanResponderMove: (_e, gs) => {
+        if (gs.dx < -8) isSwiping.current = true;
         if (gs.dx < 0) translateX.setValue(Math.max(gs.dx, -90));
       },
       onPanResponderRelease: (_e, gs) => {
@@ -90,14 +97,23 @@ export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props)
           {project.isPaid && <Feather name="check" size={14} color="#fff" />}
         </TouchableOpacity>
 
-        <View style={styles.info}>
+        <TouchableOpacity
+          style={styles.infoTouchable}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (!isSwiping.current) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push(`/project/${project.id}`);
+            }
+          }}
+        >
           <Text style={styles.name} numberOfLines={1}>
             {project.name}
           </Text>
           <Text style={styles.client} numberOfLines={1}>
             {project.clientName} · {sourceLabels[project.source] ?? "Другое"}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.right}>
           <Text
@@ -106,6 +122,7 @@ export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props)
             {project.amount.toLocaleString("ru-RU")} ₽
           </Text>
           <Text style={styles.date}>{dateStr}</Text>
+          <Feather name="chevron-right" size={12} color={Colors.textMuted} style={{ marginTop: 3 }} />
         </View>
       </Animated.View>
     </View>
@@ -169,6 +186,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryLight,
   },
   info: { flex: 1 },
+  infoTouchable: { flex: 1 },
   name: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
