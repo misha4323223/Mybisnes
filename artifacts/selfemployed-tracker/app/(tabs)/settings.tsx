@@ -70,12 +70,16 @@ export default function SettingsScreen() {
     const text = lines.join("\n");
 
     if (Platform.OS === "web") {
-      try {
-        await (navigator as any).clipboard.writeText(text);
-        Alert.alert("Скопировано!", "Отчёт скопирован в буфер обмена — вставьте в Telegram, почту или заметки.");
-      } catch {
-        Alert.alert("Отчёт", text);
-      }
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const filename = `moy-dohod-${month.toLowerCase()}-${now.getFullYear()}.txt`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } else {
       try {
         await Share.share({ message: text });
