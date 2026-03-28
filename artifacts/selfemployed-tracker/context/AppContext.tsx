@@ -35,6 +35,7 @@ interface AppContextType {
   updateProject: (id: string, p: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   addTaxPayment: (t: Omit<TaxPayment, "id">) => void;
+  deleteTaxPayment: (id: string) => void;
   markTaxPaid: (id: string) => void;
   totalIncome: number;
   paidIncome: number;
@@ -118,6 +119,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [taxPayments, saveTax]
   );
 
+  const deleteTaxPayment = useCallback(
+    (id: string) => {
+      saveTax(taxPayments.filter((t) => t.id !== id));
+    },
+    [taxPayments, saveTax]
+  );
+
   const markTaxPaid = useCallback(
     (id: string) => {
       saveTax(
@@ -150,6 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateProject,
         deleteProject,
         addTaxPayment,
+        deleteTaxPayment,
         markTaxPaid,
         totalIncome,
         paidIncome,

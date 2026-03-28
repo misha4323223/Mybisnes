@@ -26,7 +26,7 @@ function formatPeriod(period: string): string {
 }
 
 export default function TaxScreen() {
-  const { taxPayments, markTaxPaid, estimatedTax, paidIncome } = useApp();
+  const { taxPayments, markTaxPaid, deleteTaxPayment, estimatedTax, paidIncome } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -41,6 +41,24 @@ export default function TaxScreen() {
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             markTaxPaid(id);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      "Удалить напоминание",
+      "Удалить эту запись о налоге?",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Удалить",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            deleteTaxPayment(id);
           },
         },
       ]
