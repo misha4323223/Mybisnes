@@ -39,6 +39,7 @@ interface AppContextType {
   totalIncome: number;
   paidIncome: number;
   unpaidIncome: number;
+  yearlyIncome: number;
   taxRate: number;
   estimatedTax: number;
   loading: boolean;
@@ -126,6 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [taxPayments, saveTax]
   );
 
+  const currentYear = new Date().getFullYear();
   const paidIncome = projects
     .filter((p) => p.isPaid)
     .reduce((s, p) => s + p.amount, 0);
@@ -133,6 +135,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     .filter((p) => !p.isPaid)
     .reduce((s, p) => s + p.amount, 0);
   const totalIncome = paidIncome + unpaidIncome;
+  const yearlyIncome = projects
+    .filter((p) => new Date(p.date).getFullYear() === currentYear)
+    .reduce((s, p) => s + p.amount, 0);
   const taxRate = 0.04;
   const estimatedTax = Math.round(paidIncome * taxRate);
 
@@ -149,6 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         totalIncome,
         paidIncome,
         unpaidIncome,
+        yearlyIncome,
         taxRate,
         estimatedTax,
         loading,

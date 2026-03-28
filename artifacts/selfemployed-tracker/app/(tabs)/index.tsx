@@ -1,5 +1,6 @@
 import { AddProjectSheet } from "@/components/AddProjectSheet";
 import { HomeHeader } from "@/components/HomeHeader";
+import { LimitCard } from "@/components/LimitCard";
 import { StatsCard } from "@/components/StatsCard";
 import { SwipeableProjectItem } from "@/components/SwipeableProjectItem";
 import { TaxCard } from "@/components/TaxCard";
@@ -76,6 +77,7 @@ export default function HomeScreen() {
         taxRate={taxRate}
       />
       <TaxCard />
+      <LimitCard />
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>

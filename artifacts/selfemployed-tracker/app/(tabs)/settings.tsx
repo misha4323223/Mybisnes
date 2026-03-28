@@ -47,29 +47,41 @@ export default function SettingsScreen() {
     const month = months[now.getMonth()];
 
     const lines = [
-      `📊 Отчёт за ${month} ${now.getFullYear()}`,
-      `━━━━━━━━━━━━━━━━━`,
+      `Отчёт за ${month} ${now.getFullYear()}`,
+      `─────────────────`,
       `Всего доходов: ${(paidIncome + unpaidIncome).toLocaleString("ru-RU")} ₽`,
       `Получено: ${paidIncome.toLocaleString("ru-RU")} ₽`,
       `Ожидается: ${unpaidIncome.toLocaleString("ru-RU")} ₽`,
       `Налог НПД (4%): ${estimatedTax.toLocaleString("ru-RU")} ₽`,
-      `━━━━━━━━━━━━━━━━━`,
+      `─────────────────`,
       ``,
-      `📋 Список доходов:`,
+      `Список доходов:`,
     ];
 
     projects.forEach((p, i) => {
       const date = new Date(p.date).toLocaleDateString("ru-RU");
-      const status = p.isPaid ? "✅" : "⏳";
-      lines.push(`${i + 1}. ${status} ${p.name} — ${p.amount.toLocaleString("ru-RU")} ₽ (${date})`);
+      const status = p.isPaid ? "[✓]" : "[ожидается]";
+      lines.push(
+        `${i + 1}. ${status} ${p.name} — ${p.amount.toLocaleString("ru-RU")} ₽ (${date})`
+      );
     });
 
     lines.push(``, `Создано в приложении «Мой Доход»`);
+    const text = lines.join("\n");
 
-    try {
-      await Share.share({ message: lines.join("\n") });
-    } catch {
-      Alert.alert("Ошибка", "Не удалось экспортировать отчёт.");
+    if (Platform.OS === "web") {
+      try {
+        await (navigator as any).clipboard.writeText(text);
+        Alert.alert("Скопировано!", "Отчёт скопирован в буфер обмена — вставьте в Telegram, почту или заметки.");
+      } catch {
+        Alert.alert("Отчёт", text);
+      }
+    } else {
+      try {
+        await Share.share({ message: text });
+      } catch {
+        Alert.alert("Ошибка", "Не удалось экспортировать отчёт.");
+      }
     }
   };
 

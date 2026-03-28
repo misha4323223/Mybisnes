@@ -2,11 +2,13 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export function TaxCard() {
   const { estimatedTax, paidIncome, taxRate, addTaxPayment, taxPayments } = useApp();
+  const [added, setAdded] = useState(false);
 
   const now = new Date();
   const nextPaymentDate = new Date(now.getFullYear(), now.getMonth() + 1, 25);
@@ -20,24 +22,31 @@ export function TaxCard() {
   ];
   const monthStr = months[now.getMonth()];
 
+  const period = `${now.getMonth() + 1}.${now.getFullYear()}`;
+  const alreadyExists = taxPayments.some((t) => t.period === period);
+
   const handleRemind = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const period = `${now.getMonth() + 1}.${now.getFullYear()}`;
-    const alreadyExists = taxPayments.some((t) => t.period === period);
-    if (alreadyExists) {
-      Alert.alert("Уже добавлено", "Запись о налоге за этот период уже существует.");
-      return;
+    if (!alreadyExists) {
+      addTaxPayment({
+        amount: estimatedTax,
+        date: new Date().toISOString(),
+        period,
+        isPaid: false,
+      });
     }
-    addTaxPayment({
-      amount: estimatedTax,
-      date: new Date().toISOString(),
-      period,
-      isPaid: false,
-    });
-    Alert.alert("Готово", `Налог ${estimatedTax.toLocaleString("ru-RU")} ₽ добавлен в напоминания.`);
+    setAdded(true);
+    setTimeout(() => {
+      router.navigate("/(tabs)/tax");
+    }, 600);
   };
 
-  const urgentColor = daysLeft <= 5 ? Colors.danger : daysLeft <= 10 ? Colors.accent : Colors.primaryLight;
+  const urgentColor =
+    daysLeft <= 5
+      ? Colors.danger
+      : daysLeft <= 10
+      ? Colors.accent
+      : Colors.primaryLight;
 
   return (
     <View style={styles.container}>
@@ -47,29 +56,55 @@ export function TaxCard() {
         </View>
         <View style={styles.info}>
           <Text style={styles.title}>Налог за {monthStr}</Text>
-          <Text style={styles.sub}>Ставка {(taxRate * 100).toFixed(0)}% · Физ. лица</Text>
+          <Text style={styles.sub}>
+            Ставка {(taxRate * 100).toFixed(0)}% · Физ. лица
+          </Text>
         </View>
         <View style={styles.right}>
-          <Text style={styles.taxAmt}>{estimatedTax.toLocaleString("ru-RU")} ₽</Text>
+          <Text style={styles.taxAmt}>
+            {estimatedTax.toLocaleString("ru-RU")} ₽
+          </Text>
           <Text style={[styles.days, { color: urgentColor }]}>
             {daysLeft > 0 ? `через ${daysLeft} дн.` : "сегодня!"}
           </Text>
         </View>
       </View>
+
       <View style={styles.progressBar}>
         <View
           style={[
             styles.progressFill,
             {
-              width: `${Math.min(100, (paidIncome / Math.max(1, paidIncome)) * 100)}%`,
-              backgroundColor: Colors.primaryLight,
+              width: daysLeft > 0 ? `${Math.round(((30 - daysLeft) / 30) * 100)}%` : "100%",
+              backgroundColor: urgentColor,
             },
           ]}
         />
       </View>
-      <TouchableOpacity style={styles.btn} onPress={handleRemind} activeOpacity={0.8}>
-        <Feather name="bell" size={14} color={Colors.primary} />
-        <Text style={styles.btnText}>Добавить напоминание</Text>
+
+      <TouchableOpacity
+        style={[styles.btn, (added || alreadyExists) && styles.btnDone]}
+        onPress={handleRemind}
+        activeOpacity={0.8}
+        disabled={added}
+      >
+        <Feather
+          name={added || alreadyExists ? "check" : "bell"}
+          size={14}
+          color={added || alreadyExists ? Colors.primaryLight : Colors.primary}
+        />
+        <Text
+          style={[
+            styles.btnText,
+            (added || alreadyExists) && styles.btnTextDone,
+          ]}
+        >
+          {added
+            ? "Добавлено — открываю вкладку"
+            : alreadyExists
+            ? "Напоминание уже добавлено"
+            : "Добавить напоминание"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -98,9 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  info: {
-    flex: 1,
-  },
+  info: { flex: 1 },
   title: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
@@ -112,9 +145,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-  right: {
-    alignItems: "flex-end",
-  },
+  right: { alignItems: "flex-end" },
   taxAmt: {
     fontFamily: "Inter_700Bold",
     fontSize: 16,
@@ -131,6 +162,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginTop: 14,
     marginBottom: 14,
+    overflow: "hidden",
   },
   progressFill: {
     height: 4,
@@ -145,9 +177,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: Colors.surfaceAlt,
   },
+  btnDone: {
+    backgroundColor: "#E8F5E9",
+  },
   btnText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 13,
     color: Colors.primary,
+  },
+  btnTextDone: {
+    color: Colors.primaryLight,
   },
 });
