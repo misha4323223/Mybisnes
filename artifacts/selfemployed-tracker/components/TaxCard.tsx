@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export function TaxCard() {
-  const { estimatedTax, paidIncome, taxRate, addTaxPayment, taxPayments } = useApp();
+  const { estimatedTax, paidIncome, taxRate, addTaxPayment, taxPayments, deleteTaxPayment } = useApp();
   const [added, setAdded] = useState(false);
 
   const now = new Date();
@@ -23,7 +23,8 @@ export function TaxCard() {
   const monthStr = months[now.getMonth()];
 
   const period = `${now.getMonth() + 1}.${now.getFullYear()}`;
-  const alreadyExists = taxPayments.some((t) => t.period === period);
+  const existingPayment = taxPayments.find((t) => t.period === period);
+  const alreadyExists = !!existingPayment;
 
   const handleRemind = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -39,6 +40,14 @@ export function TaxCard() {
     setTimeout(() => {
       router.navigate("/(tabs)/tax");
     }, 600);
+  };
+
+  const handleRemove = () => {
+    if (existingPayment) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      deleteTaxPayment(existingPayment.id);
+      setAdded(false);
+    }
   };
 
   const urgentColor =
@@ -82,30 +91,41 @@ export function TaxCard() {
         />
       </View>
 
-      <TouchableOpacity
-        style={[styles.btn, (added || alreadyExists) && styles.btnDone]}
-        onPress={handleRemind}
-        activeOpacity={0.8}
-        disabled={added}
-      >
-        <Feather
-          name={added || alreadyExists ? "check" : "bell"}
-          size={14}
-          color={added || alreadyExists ? Colors.primaryLight : Colors.primary}
-        />
-        <Text
-          style={[
-            styles.btnText,
-            (added || alreadyExists) && styles.btnTextDone,
-          ]}
+      {alreadyExists ? (
+        <View style={styles.btnRow}>
+          <TouchableOpacity
+            style={styles.btnAdded}
+            onPress={() => router.navigate("/(tabs)/tax")}
+            activeOpacity={0.8}
+          >
+            <Feather name="check" size={14} color={Colors.primaryLight} />
+            <Text style={styles.btnTextDone}>Напоминание добавлено</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btnRemove}
+            onPress={handleRemove}
+            activeOpacity={0.8}
+          >
+            <Feather name="x" size={15} color={Colors.danger} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.btn, added && styles.btnDone]}
+          onPress={handleRemind}
+          activeOpacity={0.8}
+          disabled={added}
         >
-          {added
-            ? "Добавлено — открываю вкладку"
-            : alreadyExists
-            ? "Напоминание уже добавлено"
-            : "Добавить напоминание"}
-        </Text>
-      </TouchableOpacity>
+          <Feather
+            name={added ? "check" : "bell"}
+            size={14}
+            color={added ? Colors.primaryLight : Colors.primary}
+          />
+          <Text style={[styles.btnText, added && styles.btnTextDone]}>
+            {added ? "Добавлено — открываю вкладку" : "Добавить напоминание"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -168,6 +188,29 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
+  btnRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  btnAdded: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#E8F5E9",
+  },
+  btnRemove: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "#FFEBEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   btn: {
     flexDirection: "row",
     alignItems: "center",
@@ -186,6 +229,8 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   btnTextDone: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
     color: Colors.primaryLight,
   },
 });
