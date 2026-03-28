@@ -205,7 +205,6 @@ export default function SettingsScreen() {
               onValueChange={handleToggleNotifications}
               trackColor={{ false: Colors.border, true: Colors.primaryLight }}
               thumbColor="#fff"
-              disabled={Platform.OS === "web"}
             />
           </View>
           {notificationsOn && Platform.OS !== "web" && (

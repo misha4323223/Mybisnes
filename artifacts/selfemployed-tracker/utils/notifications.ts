@@ -5,15 +5,19 @@ import { Platform } from "react-native";
 const NOTIF_KEY = "@notifications_enabled";
 
 export function setupNotificationHandler() {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  if (Platform.OS === "web") return;
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch (e) {
+    console.warn("[Notifications] setNotificationHandler error:", e);
+  }
 }
 
 export async function getNotificationsEnabled(): Promise<boolean> {
