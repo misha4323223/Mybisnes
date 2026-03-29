@@ -2,14 +2,13 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
 import {
   Alert,
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -58,158 +57,117 @@ export default function SettingsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const csvEscape = (v: any): string => {
-    const s = String(v ?? "");
-    return s.includes(",") || s.includes('"') || s.includes("\n")
-      ? `"${s.replace(/"/g, '""')}"`
-      : s;
-  };
-
-  const buildCsv = (rows: any[][]): string =>
-    rows.map((r) => r.map(csvEscape).join(",")).join("\n");
-
   const handleExport = async () => {
-    Alert.alert(
-      "Экспорт в Excel",
-      "Будет создан CSV-файл, который открывается в Excel, Google Таблицах и Numbers.",
-      [
-        { text: "Отмена", style: "cancel" },
-        {
-          text: "Создать",
-          onPress: async () => {
-            try {
-              const now = new Date();
-              const month = MONTHS[now.getMonth()];
-              const year = now.getFullYear();
-              const totalAll = paidIncome + unpaidIncome;
+    try {
+      const now = new Date();
+      const month = MONTHS[now.getMonth()];
+      const year = now.getFullYear();
+      const totalAll = paidIncome + unpaidIncome;
 
-              const rows: any[][] = [
-                ["Мой Доход — Отчёт"],
-                ["Период", `${month} ${year}`],
-                [],
-                ["Показатель", "Сумма (руб.)"],
-                ["Всего доходов", totalAll],
-                ["Получено", paidIncome],
-                ["Ожидается", unpaidIncome],
-                [`Налог НПД ${(taxRate * 100).toFixed(0)}%`, estimatedTax],
-                [],
-                ["Лимит самозанятого (год)", 2400000],
-                ["Использовано", Math.round(totalAll)],
-                ["Остаток", Math.max(0, 2400000 - totalAll)],
-                [],
-                ["--- ДОХОДЫ ---"],
-                ["№", "Дата", "Клиент", "Описание", "Сумма (руб.)", "Валюта", "Сумма в валюте", "Курс", "Статус", "Чек ФНС", "Повтор"],
-                ...projects.map((p, i) => [
-                  i + 1,
-                  new Date(p.date).toLocaleDateString("ru-RU"),
-                  p.clientName,
-                  p.name,
-                  p.amount,
-                  p.currency && p.currency !== "RUB" ? p.currency : "RUB",
-                  p.currencyAmount ?? p.amount,
-                  p.currencyRate ?? 1,
-                  p.isPaid ? "Оплачен" : "Ожидается",
-                  p.receiptSent ? "Да" : "Нет",
-                  p.isRecurring ? "Да" : "Нет",
-                ]),
-                [],
-                ["--- НАЛОГИ ---"],
-                ["Период", "Дата", "Сумма (руб.)", "Статус"],
-                ...taxPayments.map((t) => [
-                  t.period,
-                  new Date(t.date).toLocaleDateString("ru-RU"),
-                  t.amount,
-                  t.isPaid ? "Оплачен" : "Ожидает оплаты",
-                ]),
-              ];
+      // Строим текст в формате CSV (открывается в Excel/Google Таблицах)
+      const sep = ";"; // точка с запятой — стандарт для русского Excel
+      const q = (v: any) => {
+        const s = String(v ?? "");
+        return s.includes(sep) || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const row = (...cols: any[]) => cols.map(q).join(sep);
 
-              const csv = "\uFEFF" + buildCsv(rows); // BOM для Excel
-              const fileName = `moy-dohod-${month.toLowerCase()}-${year}.csv`;
+      const lines = [
+        row("МОЙ ДОХОД — ОТЧЁТ"),
+        row("Период", `${month} ${year}`),
+        row("Дата выгрузки", now.toLocaleDateString("ru-RU")),
+        row(""),
+        row("СВОДКА"),
+        row("Показатель", "Сумма (руб.)"),
+        row("Всего доходов", totalAll),
+        row("Получено", paidIncome),
+        row("Ожидается", unpaidIncome),
+        row(`Налог НПД ${(taxRate * 100).toFixed(0)}%`, estimatedTax),
+        row(""),
+        row("Лимит самозанятого в год", 2400000),
+        row("Использовано", Math.round(totalAll)),
+        row("Остаток лимита", Math.max(0, 2400000 - totalAll)),
+        row(""),
+        row("ДОХОДЫ"),
+        row("№", "Дата", "Клиент", "Описание", "Сумма (руб.)", "Валюта", "В валюте", "Курс", "Статус", "Чек ФНС", "Повтор"),
+        ...projects.map((p, i) => row(
+          i + 1,
+          new Date(p.date).toLocaleDateString("ru-RU"),
+          p.clientName,
+          p.name,
+          p.amount,
+          p.currency && p.currency !== "RUB" ? p.currency : "RUB",
+          p.currencyAmount ?? p.amount,
+          p.currencyRate ?? 1,
+          p.isPaid ? "Оплачен" : "Ожидается",
+          p.receiptSent ? "Да" : "Нет",
+          p.isRecurring ? "Да" : "Нет",
+        )),
+        row(""),
+        row("НАЛОГИ"),
+        row("Период", "Дата", "Сумма (руб.)", "Статус"),
+        ...taxPayments.map((t) => row(
+          t.period,
+          new Date(t.date).toLocaleDateString("ru-RU"),
+          t.amount,
+          t.isPaid ? "Оплачен" : "Ожидает оплаты",
+        )),
+      ];
 
-              if (Platform.OS === "web") {
-                const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } else {
-                const path = (FileSystem.cacheDirectory ?? "") + fileName;
-                await FileSystem.writeAsStringAsync(path, csv, {
-                  encoding: FileSystem.EncodingType.UTF8,
-                });
-                const canShare = await Sharing.isAvailableAsync();
-                if (!canShare) {
-                  Alert.alert("Файл сохранён", `Файл: ${path}`);
-                  return;
-                }
-                await Sharing.shareAsync(path, {
-                  mimeType: "text/csv",
-                  dialogTitle: "Экспорт отчёта",
-                  UTI: "public.comma-separated-values-text",
-                });
-              }
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (e: any) {
-              Alert.alert("Ошибка", String(e?.message ?? e) || "Не удалось создать файл.");
-            }
-          },
-        },
-      ]
-    );
+      const csv = lines.join("\n");
+
+      if (Platform.OS === "web") {
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `moy-dohod-${month.toLowerCase()}-${year}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        await Share.share(
+          { message: csv, title: `Отчёт Мой Доход — ${month} ${year}` },
+          { dialogTitle: `Отчёт Мой Доход — ${month} ${year}` }
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e: any) {
+      // dismissedAction — пользователь сам закрыл шторку, это норма
+      if (String(e).includes("dismissed") || e?.message?.includes("dismissed")) return;
+      Alert.alert("Ошибка", String(e?.message ?? e));
+    }
   };
 
   const handleBackup = async () => {
-    Alert.alert(
-      "Резервная копия",
-      "Все данные будут сохранены в файл. Его можно отправить на почту, в Telegram или сохранить в облако.",
-      [
-        { text: "Отмена", style: "cancel" },
-        {
-          text: "Сохранить",
-          onPress: async () => {
-            try {
-              const json = await exportData();
-              const date = new Date().toISOString().slice(0, 10);
-              const fileName = `moy-dohod-backup-${date}.json`;
+    try {
+      const json = await exportData();
+      const date = new Date().toISOString().slice(0, 10);
 
-              if (Platform.OS === "web") {
-                const blob = new Blob([json], { type: "application/json;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } else {
-                const path = (FileSystem.cacheDirectory ?? "") + fileName;
-                await FileSystem.writeAsStringAsync(path, json, {
-                  encoding: FileSystem.EncodingType.UTF8,
-                });
-                const canShare = await Sharing.isAvailableAsync();
-                if (!canShare) {
-                  Alert.alert("Файл сохранён", `Файл сохранён: ${path}`);
-                  return;
-                }
-                await Sharing.shareAsync(path, {
-                  mimeType: "application/json",
-                  dialogTitle: "Резервная копия Мой Доход",
-                  UTI: "public.json",
-                });
-              }
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (e: any) {
-              Alert.alert("Ошибка", String(e?.message ?? e) || "Не удалось создать резервную копию.");
-            }
-          },
-        },
-      ]
-    );
+      if (Platform.OS === "web") {
+        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `moy-dohod-backup-${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        await Share.share(
+          { message: json, title: `Резервная копия Мой Доход ${date}` },
+          { dialogTitle: `Резервная копия Мой Доход ${date}` }
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e: any) {
+      if (String(e).includes("dismissed") || e?.message?.includes("dismissed")) return;
+      Alert.alert("Ошибка", String(e?.message ?? e));
+    }
   };
 
   const handleImport = async () => {
@@ -356,8 +314,8 @@ export default function SettingsScreen() {
               <Feather name="file-text" size={18} color={Colors.primaryLight} />
             </View>
             <View style={styles.menuInfo}>
-              <Text style={styles.menuTitle}>Экспорт в Excel</Text>
-              <Text style={styles.menuSub}>Сводка, доходы и налоги в .xlsx</Text>
+              <Text style={styles.menuTitle}>Экспорт отчёта</Text>
+              <Text style={styles.menuSub}>CSV-файл — открывается в Excel и Google Таблицах</Text>
             </View>
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
