@@ -41,7 +41,10 @@ interface AppContextType {
   paidIncome: number;
   unpaidIncome: number;
   yearlyIncome: number;
+  currentMonthIncome: number;
+  currentMonthPaidIncome: number;
   taxRate: number;
+  setTaxRate: (rate: number) => Promise<void>;
   estimatedTax: number;
   loading: boolean;
 }
@@ -50,6 +53,7 @@ const AppContext = createContext<AppContextType | null>(null);
 
 const STORAGE_KEY_PROJECTS = "@selfemployed_projects";
 const STORAGE_KEY_TAX = "@selfemployed_tax";
+const STORAGE_KEY_TAX_RATE = "@selfemployed_tax_rate";
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -58,17 +62,20 @@ function generateId(): string {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [taxPayments, setTaxPayments] = useState<TaxPayment[]>([]);
+  const [taxRate, setTaxRateState] = useState<number>(0.04);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [pRaw, tRaw] = await Promise.all([
+        const [pRaw, tRaw, rRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_PROJECTS),
           AsyncStorage.getItem(STORAGE_KEY_TAX),
+          AsyncStorage.getItem(STORAGE_KEY_TAX_RATE),
         ]);
         if (pRaw) setProjects(JSON.parse(pRaw));
         if (tRaw) setTaxPayments(JSON.parse(tRaw));
+        if (rRaw) setTaxRateState(parseFloat(rRaw));
       } catch (e) {
       } finally {
         setLoading(false);
@@ -84,6 +91,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveTax = useCallback(async (list: TaxPayment[]) => {
     setTaxPayments(list);
     await AsyncStorage.setItem(STORAGE_KEY_TAX, JSON.stringify(list));
+  }, []);
+
+  const setTaxRate = useCallback(async (rate: number) => {
+    setTaxRateState(rate);
+    await AsyncStorage.setItem(STORAGE_KEY_TAX_RATE, String(rate));
   }, []);
 
   const addProject = useCallback(
@@ -135,7 +147,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [taxPayments, saveTax]
   );
 
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
   const paidIncome = projects
     .filter((p) => p.isPaid)
     .reduce((s, p) => s + p.amount, 0);
@@ -143,11 +158,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     .filter((p) => !p.isPaid)
     .reduce((s, p) => s + p.amount, 0);
   const totalIncome = paidIncome + unpaidIncome;
+
   const yearlyIncome = projects
     .filter((p) => new Date(p.date).getFullYear() === currentYear)
     .reduce((s, p) => s + p.amount, 0);
-  const taxRate = 0.04;
-  const estimatedTax = Math.round(paidIncome * taxRate);
+
+  const currentMonthIncome = projects
+    .filter((p) => {
+      const d = new Date(p.date);
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    })
+    .reduce((s, p) => s + p.amount, 0);
+
+  const currentMonthPaidIncome = projects
+    .filter((p) => {
+      const d = new Date(p.date);
+      return (
+        p.isPaid &&
+        d.getFullYear() === currentYear &&
+        d.getMonth() === currentMonth
+      );
+    })
+    .reduce((s, p) => s + p.amount, 0);
+
+  const estimatedTax = Math.round(currentMonthPaidIncome * taxRate);
 
   return (
     <AppContext.Provider
@@ -164,7 +198,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         paidIncome,
         unpaidIncome,
         yearlyIncome,
+        currentMonthIncome,
+        currentMonthPaidIncome,
         taxRate,
+        setTaxRate,
         estimatedTax,
         loading,
       }}

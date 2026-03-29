@@ -1,15 +1,11 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
-import {
-  disableNotifications,
-  enableNotifications,
-  getNotificationsEnabled,
-} from "@/utils/notifications";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   Share,
@@ -23,20 +19,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SettingsScreen() {
-  const { projects, paidIncome, unpaidIncome, estimatedTax } = useApp();
+  const { projects, paidIncome, unpaidIncome, estimatedTax, taxRate, setTaxRate } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
-  const [notificationsOn, setNotificationsOn] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
       if (v) setName(v);
       setNameLoaded(true);
     });
-    getNotificationsEnabled().then(setNotificationsOn);
   }, []);
 
   const saveName = async () => {
@@ -45,49 +39,20 @@ export default function SettingsScreen() {
     Alert.alert("Сохранено");
   };
 
-  const handleToggleNotifications = async (value: boolean) => {
-    console.log("[Settings] toggle notifications:", value, "platform:", Platform.OS);
+  const handleOpenNotifSettings = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Только в мобильном приложении",
-        "Уведомления работают только на Android и iOS. Откройте приложение через Expo Go."
-      );
+      Alert.alert("Уведомления", "Уведомления доступны только в мобильном приложении.");
       return;
     }
-    // Optimistic update only for native
-    setNotificationsOn(value);
-    if (value) {
-      const result = await enableNotifications();
-      console.log("[Settings] enableNotifications result:", result);
-      if (result === "granted") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          "Уведомления включены",
-          "Напоминания запланированы на 23-е в 10:00 и 24-е в 18:00 каждого месяца."
-        );
-      } else if (result === "saved") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          "Настройка сохранена",
-          "Предпочтение сохранено. Уведомления будут работать в следующий раз при наличии разрешения."
-        );
-      } else if (result === "denied") {
-        setNotificationsOn(false);
-        Alert.alert(
-          "Нет разрешения",
-          "Зайдите в Настройки телефона → Приложения → найдите это приложение → включите Уведомления."
-        );
-      } else {
-        setNotificationsOn(false);
-        Alert.alert(
-          "Не удалось включить",
-          "Функция уведомлений недоступна. Проверьте, что Expo Go обновлён до последней версии."
-        );
-      }
-    } else {
-      await disableNotifications();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Alert.alert(
+      "Напоминания о налоге",
+      "Включите уведомления в системных настройках телефона, чтобы получать напоминания 23-го и 24-го числа каждого месяца.",
+      [
+        { text: "Отмена", style: "cancel" },
+        { text: "Открыть настройки", onPress: () => Linking.openSettings() },
+      ]
+    );
   };
 
   const handleExport = async () => {
@@ -197,38 +162,64 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Уведомления</Text>
+        <Text style={styles.sectionLabel}>Налоговая ставка</Text>
         <View style={styles.card}>
-          <View style={styles.notifRow}>
-            <View style={styles.notifIcon}>
-              <Feather name="bell" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.notifInfo}>
-              <Text style={styles.notifTitle}>Напоминание о налоге</Text>
-              <Text style={styles.notifSub}>
-                {Platform.OS === "web"
-                  ? "Только в мобильном приложении"
-                  : "23-го и 24-го числа каждого месяца"}
-              </Text>
-            </View>
+          <Text style={styles.fieldLabel}>Ставка НПД</Text>
+          <View style={styles.rateRow}>
             <TouchableOpacity
-              style={[styles.toggle, notificationsOn && styles.toggleOn]}
-              onPress={() => handleToggleNotifications(!notificationsOn)}
+              style={[styles.rateBtn, taxRate === 0.04 && styles.rateBtnActive]}
+              onPress={async () => {
+                await setTaxRate(0.04);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
               activeOpacity={0.8}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <View style={[styles.toggleThumb, notificationsOn && styles.toggleThumbOn]} />
+              <Text style={[styles.rateBtnPct, taxRate === 0.04 && styles.rateBtnPctActive]}>4%</Text>
+              <Text style={[styles.rateBtnLabel, taxRate === 0.04 && styles.rateBtnLabelActive]}>Физ. лица</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.rateBtn, taxRate === 0.06 && styles.rateBtnActive]}
+              onPress={async () => {
+                await setTaxRate(0.06);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.rateBtnPct, taxRate === 0.06 && styles.rateBtnPctActive]}>6%</Text>
+              <Text style={[styles.rateBtnLabel, taxRate === 0.06 && styles.rateBtnLabelActive]}>Юр. лица / ИП</Text>
             </TouchableOpacity>
           </View>
-          {notificationsOn && Platform.OS !== "web" && (
-            <View style={styles.notifHint}>
-              <Feather name="check-circle" size={13} color={Colors.primaryLight} />
-              <Text style={styles.notifHintText}>
-                Уведомления включены — 23-го в 10:00 и 24-го в 18:00
-              </Text>
-            </View>
-          )}
+          <View style={styles.rateHint}>
+            <Feather name="info" size={12} color={Colors.textMuted} />
+            <Text style={styles.rateHintText}>
+              {taxRate === 0.04
+                ? "4% — если работаете с физическими лицами"
+                : "6% — если клиент — компания или ИП"}
+            </Text>
+          </View>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Уведомления</Text>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={handleOpenNotifSettings}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: "#EEF2FF" }]}>
+            <Feather name="bell" size={18} color={Colors.primary} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Напоминание о налоге</Text>
+            <Text style={styles.menuSub}>
+              {Platform.OS === "web"
+                ? "Только в мобильном приложении"
+                : "23-го и 24-го числа каждого месяца"}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -383,6 +374,52 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     color: Colors.primaryLight,
+  },
+  rateRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  rateBtn: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceAlt,
+    padding: 12,
+    alignItems: "center",
+    gap: 4,
+  },
+  rateBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "12",
+  },
+  rateBtnPct: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    color: Colors.textSecondary,
+  },
+  rateBtnPctActive: {
+    color: Colors.primary,
+  },
+  rateBtnLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  rateBtnLabelActive: {
+    color: Colors.primary,
+  },
+  rateHint: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+  },
+  rateHintText: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
   },
   toggle: {
     width: 50,

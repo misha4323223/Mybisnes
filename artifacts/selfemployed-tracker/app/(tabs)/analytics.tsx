@@ -44,10 +44,17 @@ const barStyles = StyleSheet.create({
 
 const COLORS = [Colors.primary, Colors.primaryLight, Colors.accent, Colors.textMuted];
 
+const MONTH_NAMES_FULL = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
 export default function AnalyticsScreen() {
-  const { projects, paidIncome, unpaidIncome, estimatedTax, taxRate } = useApp();
+  const { projects, paidIncome, unpaidIncome, estimatedTax, taxRate, currentMonthIncome, currentMonthPaidIncome } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const now = new Date();
+  const currentMonthName = MONTH_NAMES_FULL[now.getMonth()];
 
   const sourceMap: Record<string, number> = {};
   for (const p of projects) {
@@ -56,7 +63,6 @@ export default function AnalyticsScreen() {
   const total = Object.values(sourceMap).reduce((a, b) => a + b, 0) || 1;
   const sourceEntries = Object.entries(sourceMap).sort((a, b) => b[1] - a[1]);
 
-  const now = new Date();
   const months: Record<string, number> = {};
   for (const p of projects) {
     const d = new Date(p.date);
@@ -123,13 +129,37 @@ export default function AnalyticsScreen() {
       <Text style={styles.pageTitle}>Аналитика</Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Итоги месяца</Text>
+        <Text style={styles.cardTitle}>{currentMonthName} — текущий месяц</Text>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>
+              {currentMonthIncome.toLocaleString("ru-RU")} ₽
+            </Text>
+            <Text style={styles.summaryLabel}>Начислено</Text>
+          </View>
+          <View style={[styles.summaryItem, styles.summaryMiddle]}>
+            <Text style={[styles.summaryValue, { color: Colors.primaryLight }]}>
+              {currentMonthPaidIncome.toLocaleString("ru-RU")} ₽
+            </Text>
+            <Text style={styles.summaryLabel}>Получено</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryValue, { color: Colors.danger }]}>
+              {estimatedTax.toLocaleString("ru-RU")} ₽
+            </Text>
+            <Text style={styles.summaryLabel}>Налог {(taxRate * 100).toFixed(0)}%</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Все доходы</Text>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>
               {(paidIncome + unpaidIncome).toLocaleString("ru-RU")} ₽
             </Text>
-            <Text style={styles.summaryLabel}>Всего начислено</Text>
+            <Text style={styles.summaryLabel}>Всего</Text>
           </View>
           <View style={[styles.summaryItem, styles.summaryMiddle]}>
             <Text style={[styles.summaryValue, { color: Colors.primaryLight }]}>
@@ -138,10 +168,10 @@ export default function AnalyticsScreen() {
             <Text style={styles.summaryLabel}>Получено</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.danger }]}>
-              {estimatedTax.toLocaleString("ru-RU")} ₽
+            <Text style={[styles.summaryValue, { color: Colors.accent }]}>
+              {unpaidIncome.toLocaleString("ru-RU")} ₽
             </Text>
-            <Text style={styles.summaryLabel}>Налог</Text>
+            <Text style={styles.summaryLabel}>Ожидает</Text>
           </View>
         </View>
       </View>
