@@ -2,13 +2,14 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
 import {
   Alert,
   Modal,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import XLSX from "xlsx";
 
 const MONTHS = [
   "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -24,7 +26,7 @@ const MONTHS = [
 ];
 
 export default function SettingsScreen() {
-  const { projects, paidIncome, unpaidIncome, estimatedTax, taxRate, setTaxRate, exportData, importData } = useApp();
+  const { projects, taxPayments, paidIncome, unpaidIncome, estimatedTax, taxRate, setTaxRate, exportData, importData } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -58,77 +60,141 @@ export default function SettingsScreen() {
   };
 
   const handleExport = async () => {
-    const now = new Date();
-    const month = MONTHS[now.getMonth()];
-
-    const lines = [
-      `Отчёт за ${month} ${now.getFullYear()}`,
-      `─────────────────`,
-      `Всего доходов: ${(paidIncome + unpaidIncome).toLocaleString("ru-RU")} ₽`,
-      `Получено: ${paidIncome.toLocaleString("ru-RU")} ₽`,
-      `Ожидается: ${unpaidIncome.toLocaleString("ru-RU")} ₽`,
-      `Налог НПД (${(taxRate * 100).toFixed(0)}%): ${estimatedTax.toLocaleString("ru-RU")} ₽`,
-      `─────────────────`,
-      ``,
-      `Список доходов:`,
-    ];
-
-    projects.forEach((p, i) => {
-      const date = new Date(p.date).toLocaleDateString("ru-RU");
-      const status = p.isPaid ? "[✓]" : "[ожидается]";
-      const receipt = p.receiptSent ? " [чек ФНС ✓]" : "";
-      const curr = p.currency && p.currency !== "RUB"
-        ? ` (${p.currencyAmount} ${p.currency} × ${p.currencyRate})`
-        : "";
-      lines.push(
-        `${i + 1}. ${status} ${p.name} — ${p.amount.toLocaleString("ru-RU")} ₽${curr}${receipt} · ${p.clientName} (${date})`
-      );
-    });
-
-    lines.push(``, `Создано в приложении «Мой Доход»`);
-    const text = lines.join("\n");
-
-    if (Platform.OS === "web") {
-      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `moy-dohod-${month.toLowerCase()}-${now.getFullYear()}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } else {
-      try {
-        await Share.share({ message: text });
-      } catch {
-        Alert.alert("Ошибка", "Не удалось экспортировать отчёт.");
-      }
-    }
-  };
-
-  const handleBackup = async () => {
     try {
-      const json = await exportData();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const now = new Date();
+      const month = MONTHS[now.getMonth()];
+      const year = now.getFullYear();
+
+      const wb = XLSX.utils.book_new();
+
+      // ── Sheet 1: Сводка ──────────────────────────────────────
+      const totalAll = paidIncome + unpaidIncome;
+      const summaryRows = [
+        ["Отчёт «Мой Доход»", ""],
+        ["Период", `${month} ${year}`],
+        [""],
+        ["Показатель", "Значение, ₽"],
+        ["Всего доходов", totalAll],
+        ["Получено", paidIncome],
+        ["Ожидается", unpaidIncome],
+        [`Налог НПД ${(taxRate * 100).toFixed(0)}%`, estimatedTax],
+        [""],
+        ["Лимит самозанятого (год)", 2400000],
+        ["Использовано (год)", Math.round(totalAll)],
+        ["Остаток", Math.max(0, 2400000 - totalAll)],
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+      ws1["!cols"] = [{ wch: 32 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, ws1, "Сводка");
+
+      // ── Sheet 2: Доходы ──────────────────────────────────────
+      const incomeHeader = [
+        "№", "Дата", "Клиент", "Описание", "Сумма, ₽",
+        "Валюта", "Сумма в валюте", "Курс к ₽",
+        "Статус", "Чек ФНС", "Повтор",
+      ];
+      const incomeRows = projects.map((p, i) => [
+        i + 1,
+        new Date(p.date).toLocaleDateString("ru-RU"),
+        p.clientName,
+        p.name,
+        p.amount,
+        p.currency && p.currency !== "RUB" ? p.currency : "RUB",
+        p.currencyAmount ?? p.amount,
+        p.currencyRate ?? 1,
+        p.isPaid ? "Оплачен" : "Ожидается",
+        p.receiptSent ? "Да" : "Нет",
+        p.isRecurring ? "Да" : "Нет",
+      ]);
+      const ws2 = XLSX.utils.aoa_to_sheet([incomeHeader, ...incomeRows]);
+      ws2["!cols"] = [
+        { wch: 4 }, { wch: 12 }, { wch: 20 }, { wch: 28 }, { wch: 14 },
+        { wch: 8 }, { wch: 16 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 8 },
+      ];
+      XLSX.utils.book_append_sheet(wb, ws2, "Доходы");
+
+      // ── Sheet 3: Налоги ──────────────────────────────────────
+      const taxHeader = ["Период", "Дата", "Сумма, ₽", "Статус"];
+      const taxRows = taxPayments.map((t) => [
+        t.period,
+        new Date(t.date).toLocaleDateString("ru-RU"),
+        t.amount,
+        t.isPaid ? "Оплачен" : "Ожидает оплаты",
+      ]);
+      const ws3 = XLSX.utils.aoa_to_sheet([taxHeader, ...taxRows]);
+      ws3["!cols"] = [{ wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws3, "Налоги");
+
+      const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+      const fileName = `moy-dohod-${month.toLowerCase()}-${year}.xlsx`;
+
       if (Platform.OS === "web") {
-        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+        const bin = atob(base64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        const blob = new Blob([arr], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `moy-dohod-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } else {
-        await Share.share({
-          message: json,
-          title: "Резервная копия Мой Доход",
+        const path = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(path, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await Sharing.shareAsync(path, {
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          dialogTitle: "Экспорт отчёта",
+          UTI: "com.microsoft.excel.xlsx",
         });
       }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      Alert.alert("Ошибка", "Не удалось создать резервную копию.");
+    } catch (e: any) {
+      Alert.alert("Ошибка экспорта", e?.message ?? "Не удалось создать файл отчёта.");
+    }
+  };
+
+  const handleBackup = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const json = await exportData();
+      const date = new Date().toISOString().slice(0, 10);
+      const fileName = `moy-dohod-backup-${date}.json`;
+
+      if (Platform.OS === "web") {
+        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const path = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(path, json, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        await Sharing.shareAsync(path, {
+          mimeType: "application/json",
+          dialogTitle: "Резервная копия Мой Доход",
+          UTI: "public.json",
+        });
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      Alert.alert("Ошибка", e?.message ?? "Не удалось создать резервную копию.");
     }
   };
 
@@ -273,11 +339,11 @@ export default function SettingsScreen() {
           <Text style={styles.sectionLabel}>Отчётность</Text>
           <TouchableOpacity style={styles.menuItem} onPress={handleExport} activeOpacity={0.7}>
             <View style={[styles.menuIcon, { backgroundColor: "#E8F5E9" }]}>
-              <Feather name="share" size={18} color={Colors.primaryLight} />
+              <Feather name="file-text" size={18} color={Colors.primaryLight} />
             </View>
             <View style={styles.menuInfo}>
-              <Text style={styles.menuTitle}>Экспорт отчёта</Text>
-              <Text style={styles.menuSub}>Поделиться сводкой за месяц</Text>
+              <Text style={styles.menuTitle}>Экспорт в Excel</Text>
+              <Text style={styles.menuSub}>Сводка, доходы и налоги в .xlsx</Text>
             </View>
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
@@ -291,7 +357,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.menuInfo}>
               <Text style={styles.menuTitle}>Создать резервную копию</Text>
-              <Text style={styles.menuSub}>Сохранить все данные как JSON-файл</Text>
+              <Text style={styles.menuSub}>Сохранить данные в файл для переноса</Text>
             </View>
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
