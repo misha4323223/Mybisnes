@@ -1,3 +1,12 @@
 const { getDefaultConfig } = require("expo/metro-config");
 
-module.exports = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
+
+config.server = {
+  ...config.server,
+  rewriteRequestUrl: (url) => {
+    return url.replace(/([?&])lazy=true/g, "$1lazy=false");
+  },
+};
+
+module.exports = config;
