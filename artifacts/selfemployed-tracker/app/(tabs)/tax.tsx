@@ -47,7 +47,7 @@ function getCurrentPeriod(): string {
 }
 
 export default function TaxScreen() {
-  const { taxPayments, projects, markTaxPaid, deleteTaxPayment, estimatedTax, paidIncome, taxRate, addTaxPayment } = useApp();
+  const { taxPayments, projects, markTaxPaid, markTaxUnpaid, deleteTaxPayment, estimatedTax, paidIncome, taxRate, addTaxPayment } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -239,18 +239,14 @@ export default function TaxScreen() {
               <Text style={styles.payBtnText}>Оплатил</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.paidRow}>
-              <View style={styles.paidTag}>
-                <Feather name="check" size={13} color={Colors.primaryLight} />
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(item.id)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.deleteBtn}
-              >
-                <Feather name="trash-2" size={14} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.paidTag}
+              onPress={() => markTaxUnpaid(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+            >
+              <Feather name="check" size={13} color={Colors.primaryLight} />
+            </TouchableOpacity>
           )}
         </View>
       )}

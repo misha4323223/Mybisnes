@@ -37,6 +37,7 @@ interface AppContextType {
   addTaxPayment: (t: Omit<TaxPayment, "id">) => void;
   deleteTaxPayment: (id: string) => void;
   markTaxPaid: (id: string) => void;
+  markTaxUnpaid: (id: string) => void;
   totalIncome: number;
   paidIncome: number;
   unpaidIncome: number;
@@ -151,6 +152,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const markTaxUnpaid = useCallback(
+    (id: string) => {
+      setTaxPayments((prev) => {
+        const newList = prev.map((t) =>
+          t.id === id ? { ...t, isPaid: false } : t
+        );
+        AsyncStorage.setItem(STORAGE_KEY_TAX, JSON.stringify(newList));
+        return newList;
+      });
+    },
+    []
+  );
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -198,6 +212,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addTaxPayment,
         deleteTaxPayment,
         markTaxPaid,
+        markTaxUnpaid,
         totalIncome,
         paidIncome,
         unpaidIncome,
