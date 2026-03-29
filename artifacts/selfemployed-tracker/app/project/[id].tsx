@@ -50,10 +50,18 @@ export default function ProjectDetailScreen() {
   const [noteText, setNoteText] = useState(project?.description ?? "");
   const [showEdit, setShowEdit] = useState(false);
 
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/");
+    }
+  };
+
   if (!project) {
     return (
       <View style={[styles.container, { paddingTop: topPad + 20 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.notFound}>
@@ -95,7 +103,7 @@ export default function ProjectDetailScreen() {
         onPress: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           deleteProject(project.id);
-          router.back();
+          goBack();
         },
       },
     ]);
@@ -140,7 +148,7 @@ export default function ProjectDetailScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navbar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>Детали</Text>
