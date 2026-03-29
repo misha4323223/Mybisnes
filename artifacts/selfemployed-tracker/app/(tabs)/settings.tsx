@@ -1,5 +1,6 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import { disableNotifications, enableNotifications, getNotificationsEnabled } from "@/utils/notifications";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -42,8 +43,8 @@ export default function SettingsScreen() {
       if (v) setName(v);
       setNameLoaded(true);
     });
-    AsyncStorage.getItem("@notif_on").then((v) => {
-      setNotifOn(v === "1");
+    getNotificationsEnabled().then((enabled) => {
+      setNotifOn(enabled);
     });
   }, []);
 
@@ -53,11 +54,26 @@ export default function SettingsScreen() {
     Alert.alert("Сохранено");
   };
 
-  const toggleNotif = () => {
-    const next = !notifOn;
-    setNotifOn(next);
-    AsyncStorage.setItem("@notif_on", next ? "1" : "0");
+  const toggleNotif = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!notifOn) {
+      const result = await enableNotifications();
+      if (result === "denied") {
+        Alert.alert(
+          "Нет доступа к уведомлениям",
+          "Разрешите уведомления в настройках телефона: Настройки → Мой Доход → Уведомления."
+        );
+        return;
+      }
+      if (result === "unavailable") {
+        Alert.alert("Недоступно", "Уведомления не поддерживаются на этом устройстве.");
+        return;
+      }
+      setNotifOn(true);
+    } else {
+      await disableNotifications();
+      setNotifOn(false);
+    }
   };
 
   const handleExport = async () => {

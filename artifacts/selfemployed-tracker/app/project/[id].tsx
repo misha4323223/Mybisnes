@@ -39,7 +39,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, updateProject, deleteProject, addProject } = useApp();
+  const { projects, updateProject, deleteProject, addProject, taxRate } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -69,7 +69,7 @@ export default function ProjectDetailScreen() {
     month: "long",
     year: "numeric",
   });
-  const tax = Math.round(project.amount * 0.04);
+  const tax = Math.round(project.amount * taxRate);
   const net = project.amount - tax;
 
   const hasForeignCurrency = project.currency && project.currency !== "RUB";
@@ -215,7 +215,7 @@ export default function ProjectDetailScreen() {
           <View style={styles.calcRow}>
             <View style={styles.calcLabelRow}>
               <Text style={styles.calcLabel}>Налог НПД</Text>
-              <View style={styles.rateTag}><Text style={styles.rateText}>4%</Text></View>
+              <View style={styles.rateTag}><Text style={styles.rateText}>{(taxRate * 100).toFixed(0)}%</Text></View>
             </View>
             <Text style={[styles.calcValue, { color: Colors.danger }]}>−{tax.toLocaleString("ru-RU")} ₽</Text>
           </View>

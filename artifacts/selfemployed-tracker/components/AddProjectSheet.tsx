@@ -1,5 +1,6 @@
 import Colors from "@/constants/colors";
 import { Currency, IncomeSource, Project, useApp } from "@/context/AppContext";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
@@ -52,6 +53,9 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
   const [currency, setCurrency] = useState<Currency>("RUB");
   const [currencyRate, setCurrencyRate] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [webDateStr, setWebDateStr] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (visible) {
@@ -67,6 +71,9 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrency(projectToEdit.currency ?? "RUB");
         setCurrencyRate(projectToEdit.currencyRate?.toString() ?? "");
         setIsRecurring(projectToEdit.isRecurring ?? false);
+        const d = new Date(projectToEdit.date);
+        setDate(d);
+        setWebDateStr(d.toISOString().slice(0, 10));
       } else {
         setName("");
         setClientName("");
@@ -77,6 +84,9 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrency("RUB");
         setCurrencyRate("");
         setIsRecurring(false);
+        const today = new Date();
+        setDate(today);
+        setWebDateStr(today.toISOString().slice(0, 10));
       }
     }
   }, [visible, projectToEdit]);
@@ -109,6 +119,10 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const finalDate = Platform.OS === "web"
+      ? (webDateStr ? new Date(webDateStr + "T12:00:00") : new Date())
+      : date;
+
     const payload = {
       name: name.trim(),
       clientName: clientName.trim() || "Без клиента",
@@ -120,15 +134,13 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
       currencyAmount,
       currencyRate: rate,
       isRecurring,
+      date: finalDate.toISOString(),
     };
 
     if (isEdit && projectToEdit) {
       updateProject(projectToEdit.id, payload);
     } else {
-      addProject({
-        ...payload,
-        date: new Date().toISOString(),
-      });
+      addProject(payload);
     }
     onClose();
   };
@@ -179,6 +191,47 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               value={clientName}
               onChangeText={setClientName}
             />
+
+            <Text style={styles.fieldLabel}>Дата получения</Text>
+            {Platform.OS === "web" ? (
+              <TextInput
+                style={styles.input}
+                value={webDateStr}
+                onChangeText={(v) => {
+                  setWebDateStr(v);
+                  const d = new Date(v + "T12:00:00");
+                  if (!isNaN(d.getTime())) setDate(d);
+                }}
+                placeholder="ГГГГ-ММ-ДД"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="numbers-and-punctuation"
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.dateBtn}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="calendar" size={16} color={Colors.primary} />
+                <Text style={styles.dateBtnText}>
+                  {date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                </Text>
+                <Feather name="chevron-down" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            {showDatePicker && Platform.OS !== "web" && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                maximumDate={new Date()}
+                onChange={(_, selectedDate) => {
+                  setShowDatePicker(Platform.OS === "ios");
+                  if (selectedDate) setDate(selectedDate);
+                }}
+                locale="ru-RU"
+              />
+            )}
 
             <Text style={styles.fieldLabel}>Валюта</Text>
             <View style={styles.currencyRow}>
@@ -526,5 +579,22 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 16,
     color: "#fff",
+  },
+  dateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "55",
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  dateBtnText: {
+    flex: 1,
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    color: Colors.textPrimary,
   },
 });
