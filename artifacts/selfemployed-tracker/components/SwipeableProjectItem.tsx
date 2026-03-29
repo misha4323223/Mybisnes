@@ -21,6 +21,7 @@ interface Props {
   project: Project;
   onTogglePaid: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (project: Project) => void;
 }
 
 const sourceLabels: Record<string, string> = {
@@ -30,12 +31,21 @@ const sourceLabels: Record<string, string> = {
   other: "Другое",
 };
 
-export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props) {
+const SWIPE_OPEN = -160;
+
+export function SwipeableProjectItem({ project, onTogglePaid, onDelete, onEdit }: Props) {
   const translateX = useRef(new Animated.Value(0)).current;
   const date = new Date(project.date);
   const dateStr = date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 
   const isSwiping = useRef(false);
+
+  const closeSwipe = () => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -46,19 +56,16 @@ export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props)
       },
       onPanResponderMove: (_e, gs) => {
         if (gs.dx < -8) isSwiping.current = true;
-        if (gs.dx < 0) translateX.setValue(Math.max(gs.dx, -90));
+        if (gs.dx < 0) translateX.setValue(Math.max(gs.dx, -170));
       },
       onPanResponderRelease: (_e, gs) => {
         if (gs.dx < SWIPE_THRESHOLD) {
           Animated.spring(translateX, {
-            toValue: -80,
+            toValue: SWIPE_OPEN,
             useNativeDriver: true,
           }).start();
         } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          closeSwipe();
         }
       },
     })
@@ -73,11 +80,21 @@ export function SwipeableProjectItem({ project, onTogglePaid, onDelete }: Props)
     }).start(() => onDelete(project.id));
   };
 
+  const handleEdit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    closeSwipe();
+    setTimeout(() => onEdit(project), 200);
+  };
+
   return (
     <View style={styles.wrapper}>
-      <View style={styles.deleteBackground}>
+      <View style={styles.actionsBackground}>
+        <TouchableOpacity style={styles.editBtn} onPress={handleEdit}>
+          <Feather name="edit-2" size={18} color="#fff" />
+          <Text style={styles.editText}>Изменить</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-          <Feather name="trash-2" size={20} color="#fff" />
+          <Feather name="trash-2" size={18} color="#fff" />
           <Text style={styles.deleteText}>Удалить</Text>
         </TouchableOpacity>
       </View>
@@ -135,23 +152,34 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
   },
-  deleteBackground: {
+  actionsBackground: {
     position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
-    width: 80,
-    backgroundColor: Colors.danger,
+    width: 160,
+    flexDirection: "row",
     borderRadius: 14,
+    overflow: "hidden",
+  },
+  editBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    gap: 3,
+  },
+  editText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: "#fff",
   },
   deleteBtn: {
+    flex: 1,
+    backgroundColor: Colors.danger,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
-    flex: 1,
-    paddingHorizontal: 12,
+    gap: 3,
   },
   deleteText: {
     fontFamily: "Inter_500Medium",

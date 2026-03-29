@@ -5,7 +5,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { SwipeableProjectItem } from "@/components/SwipeableProjectItem";
 import { TaxCard } from "@/components/TaxCard";
 import Colors from "@/constants/colors";
-import { useApp } from "@/context/AppContext";
+import { Project, useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import * as Haptics from "expo-haptics";
@@ -43,6 +43,7 @@ export default function HomeScreen() {
   } = useApp();
 
   const [showAdd, setShowAdd] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [periodKey, setPeriodKey] = useState<string>("all");
@@ -309,6 +310,7 @@ export default function HomeScreen() {
             project={item}
             onTogglePaid={(id) => updateProject(id, { isPaid: !item.isPaid })}
             onDelete={deleteProject}
+            onEdit={(p) => setEditingProject(p)}
           />
         )}
         ListHeaderComponent={ListHeader}
@@ -321,6 +323,11 @@ export default function HomeScreen() {
         keyboardShouldPersistTaps="handled"
       />
       <AddProjectSheet visible={showAdd} onClose={() => setShowAdd(false)} />
+      <AddProjectSheet
+        visible={!!editingProject}
+        onClose={() => setEditingProject(undefined)}
+        projectToEdit={editingProject}
+      />
     </View>
   );
 }
