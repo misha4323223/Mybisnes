@@ -89,12 +89,14 @@ export default function TaxScreen() {
         { text: "Отмена", style: "cancel" },
         {
           text: "Оплачено",
+          style: "default",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             markTaxPaid(id);
           },
         },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 

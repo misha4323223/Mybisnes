@@ -140,11 +140,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const markTaxPaid = useCallback(
     (id: string) => {
-      saveTax(
-        taxPayments.map((t) => (t.id === id ? { ...t, isPaid: true } : t))
-      );
+      setTaxPayments((prev) => {
+        const newList = prev.map((t) =>
+          t.id === id ? { ...t, isPaid: true, date: new Date().toISOString() } : t
+        );
+        AsyncStorage.setItem(STORAGE_KEY_TAX, JSON.stringify(newList));
+        return newList;
+      });
     },
-    [taxPayments, saveTax]
+    []
   );
 
   const now = new Date();
