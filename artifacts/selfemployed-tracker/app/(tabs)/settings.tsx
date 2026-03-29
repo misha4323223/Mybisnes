@@ -59,14 +59,12 @@ export default function SettingsScreen() {
     if (!notifOn) {
       const result = await enableNotifications();
       if (result === "denied") {
-        Alert.alert(
-          "Нет доступа к уведомлениям",
-          "Разрешите уведомления в настройках телефона: Настройки → Мой Доход → Уведомления."
-        );
-        return;
-      }
-      if (result === "unavailable") {
-        Alert.alert("Недоступно", "Уведомления не поддерживаются на этом устройстве.");
+        if (Platform.OS !== "web") {
+          Alert.alert(
+            "Нет доступа к уведомлениям",
+            "Разрешите уведомления в настройках телефона: Настройки → Мой Доход → Уведомления."
+          );
+        }
         return;
       }
       setNotifOn(true);

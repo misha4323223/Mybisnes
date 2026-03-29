@@ -35,7 +35,8 @@ export type NotifResult = "granted" | "denied" | "unavailable" | "saved";
 
 export async function enableNotifications(): Promise<NotifResult> {
   if (Platform.OS === "web") {
-    return "unavailable";
+    await AsyncStorage.setItem(NOTIF_KEY, "true");
+    return "granted";
   }
 
   try {
