@@ -112,7 +112,7 @@ export default function AnalyticsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.emptyBtn}
-            onPress={() => router.push("/(tabs)/")}
+            onPress={() => router.push("/")}
             activeOpacity={0.85}
           >
             <Feather name="arrow-left" size={16} color="#fff" />
