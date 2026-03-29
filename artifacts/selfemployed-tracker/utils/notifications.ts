@@ -1,13 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const NOTIF_KEY = "@notifications_enabled";
 
+function isExpoGo(): boolean {
+  return Constants.appOwnership === "expo";
+}
+
 export function setupNotificationHandler() {
-  // Only runs on native, skip on web
   if (Platform.OS === "web") return;
+  if (isExpoGo()) return;
   try {
-    // Dynamic import to avoid crashes on web
     const Notifications = require("expo-notifications");
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -34,7 +38,7 @@ export async function getNotificationsEnabled(): Promise<boolean> {
 export type NotifResult = "granted" | "denied" | "unavailable" | "saved";
 
 export async function enableNotifications(): Promise<NotifResult> {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || isExpoGo()) {
     await AsyncStorage.setItem(NOTIF_KEY, "true");
     return "granted";
   }
@@ -135,7 +139,7 @@ export async function enableNotifications(): Promise<NotifResult> {
 
 export async function disableNotifications(): Promise<void> {
   try {
-    if (Platform.OS !== "web") {
+    if (Platform.OS !== "web" && !isExpoGo()) {
       const Notifications = require("expo-notifications");
       await Notifications.cancelAllScheduledNotificationsAsync();
     }
