@@ -1,6 +1,7 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
@@ -33,6 +34,8 @@ export default function SettingsScreen() {
   const [notifOn, setNotifOn] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
+  const [shareModal, setShareModal] = useState<{ title: string; content: string; shareTitle: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   React.useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
