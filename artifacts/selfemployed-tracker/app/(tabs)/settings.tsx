@@ -25,15 +25,10 @@ export default function SettingsScreen() {
 
   const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
-  const [notifEnabled, setNotifEnabled] = useState(false);
-
   React.useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
       if (v) setName(v);
       setNameLoaded(true);
-    });
-    AsyncStorage.getItem("@notif_enabled").then((v) => {
-      if (v === "true") setNotifEnabled(true);
     });
   }, []);
 
@@ -43,38 +38,6 @@ export default function SettingsScreen() {
     Alert.alert("Сохранено");
   };
 
-  const handleToggleNotif = () => {
-    const next = !notifEnabled;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (Platform.OS === "web") {
-      Alert.alert("Уведомления", "Уведомления доступны только в мобильном приложении.");
-      return;
-    }
-
-    if (next) {
-      // Включаем — просим открыть системные настройки
-      Alert.alert(
-        "Включить напоминания?",
-        "Разрешите уведомления в настройках телефона. Мы напомним об уплате налога 23-го и 24-го числа каждого месяца.",
-        [
-          { text: "Не сейчас", style: "cancel" },
-          {
-            text: "Открыть настройки",
-            onPress: () => {
-              setNotifEnabled(true);
-              AsyncStorage.setItem("@notif_enabled", "true");
-              Linking.openSettings();
-            },
-          },
-        ]
-      );
-    } else {
-      // Выключаем сразу
-      setNotifEnabled(false);
-      AsyncStorage.setItem("@notif_enabled", "false");
-    }
-  };
 
   const handleExport = async () => {
     const now = new Date();
@@ -223,27 +186,26 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Уведомления</Text>
-        <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.notifRow}
-            onPress={handleToggleNotif}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.notifIcon, { backgroundColor: notifEnabled ? "#EEF2FF" : Colors.surfaceAlt }]}>
-              <Feather name="bell" size={18} color={notifEnabled ? Colors.primary : Colors.textMuted} />
-            </View>
-            <View style={styles.notifInfo}>
-              <Text style={styles.notifTitle}>Напоминание о налоге</Text>
-              <Text style={[styles.notifSub, notifEnabled && { color: Colors.primary }]}>
-                {notifEnabled ? "Включено — 23-го и 24-го числа" : "Выключено"}
-              </Text>
-            </View>
-            {/* Визуальный тумблер */}
-            <View style={[styles.toggle, notifEnabled && styles.toggleOn]}>
-              <View style={[styles.toggleThumb, notifEnabled && styles.toggleThumbOn]} />
-            </View>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.menuItem}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (Platform.OS === "web") {
+              Alert.alert("Уведомления", "Только в мобильном приложении.");
+            } else {
+              Linking.openSettings();
+            }
+          }}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: "#EEF2FF" }]}>
+            <Feather name="bell" size={18} color={Colors.primary} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Напоминания о налоге</Text>
+            <Text style={styles.menuSub}>Настройки уведомлений телефона</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
