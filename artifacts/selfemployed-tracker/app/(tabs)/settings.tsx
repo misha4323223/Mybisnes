@@ -25,10 +25,15 @@ export default function SettingsScreen() {
 
   const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
+  const [notifOn, setNotifOn] = useState(false);
+
   React.useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
       if (v) setName(v);
       setNameLoaded(true);
+    });
+    AsyncStorage.getItem("@notif_on").then((v) => {
+      setNotifOn(v === "1");
     });
   }, []);
 
@@ -38,6 +43,12 @@ export default function SettingsScreen() {
     Alert.alert("Сохранено");
   };
 
+  const toggleNotif = () => {
+    const next = !notifOn;
+    setNotifOn(next);
+    AsyncStorage.setItem("@notif_on", next ? "1" : "0");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
 
   const handleExport = async () => {
     const now = new Date();
@@ -186,26 +197,28 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Уведомления</Text>
-        <TouchableOpacity
-          style={styles.menuItem}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (Platform.OS === "web") {
-              Alert.alert("Уведомления", "Только в мобильном приложении.");
-            } else {
-              Linking.openSettings();
-            }
-          }}
-        >
-          <View style={[styles.menuIcon, { backgroundColor: "#EEF2FF" }]}>
-            <Feather name="bell" size={18} color={Colors.primary} />
+        <View style={styles.card}>
+          <View style={styles.notifRow}>
+            <View style={[styles.notifIcon, { backgroundColor: notifOn ? "#EEF2FF" : Colors.surfaceAlt }]}>
+              <Feather name="bell" size={18} color={notifOn ? Colors.primary : Colors.textMuted} />
+            </View>
+            <View style={styles.notifInfo}>
+              <Text style={styles.notifTitle}>Напоминание о налоге</Text>
+              <Text style={[styles.notifSub, { color: notifOn ? Colors.primary : Colors.textMuted }]}>
+                {notifOn ? "Включено" : "Выключено"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={toggleNotif}
+              activeOpacity={0.85}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+            >
+              <View style={[styles.toggle, notifOn && styles.toggleOn]}>
+                <View style={[styles.toggleThumb, notifOn && styles.toggleThumbOn]} />
+              </View>
+            </TouchableOpacity>
           </View>
-          <View style={styles.menuInfo}>
-            <Text style={styles.menuTitle}>Напоминания о налоге</Text>
-            <Text style={styles.menuSub}>Настройки уведомлений телефона</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={Colors.textMuted} />
-        </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.section}>
