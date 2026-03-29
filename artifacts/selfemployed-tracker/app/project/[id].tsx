@@ -272,7 +272,7 @@ export default function ProjectDetailScreen() {
             style={[styles.actionRow, { marginTop: 8 }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Linking.openURL("https://lknpd.nalog.ru/").catch(() =>
+              Linking.openURL("https://npd.nalog.ru/web-app/").catch(() =>
                 Alert.alert("Не удалось открыть", "Установите приложение «Мой налог» от ФНС России")
               );
             }}
