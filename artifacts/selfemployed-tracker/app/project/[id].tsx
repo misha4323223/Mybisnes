@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -266,6 +267,26 @@ export default function ProjectDetailScreen() {
               <Feather name="chevron-right" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={[styles.actionRow, { marginTop: 8 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Linking.openURL("https://lknpd.nalog.ru/").catch(() =>
+                Alert.alert("Не удалось открыть", "Установите приложение «Мой налог» от ФНС России")
+              );
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#E3F2FD" }]}>
+              <Feather name="external-link" size={16} color="#1565C0" />
+            </View>
+            <View style={styles.actionInfo}>
+              <Text style={styles.actionTitle}>Открыть «Мой налог» ФНС</Text>
+              <Text style={styles.actionSub}>Оплатить НПД и выдать чек клиенту</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.noteCard}>

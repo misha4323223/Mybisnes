@@ -8,6 +8,7 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
+import * as Haptics from "expo-haptics";
 import {
   ActivityIndicator,
   FlatList,
@@ -37,6 +38,7 @@ export default function HomeScreen() {
     taxRate,
     updateProject,
     deleteProject,
+    addProject,
     loading,
   } = useApp();
 
@@ -44,6 +46,47 @@ export default function HomeScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [periodKey, setPeriodKey] = useState<string>("all");
+
+  const recurringReminders = useMemo(() => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const recurring = projects.filter((p) => p.isRecurring);
+    return recurring.filter((p) => {
+      const d = new Date(p.date);
+      if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) return false;
+      const alreadyThisMonth = projects.some(
+        (q) =>
+          q.name === p.name &&
+          q.clientName === p.clientName &&
+          new Date(q.date).getMonth() === thisMonth &&
+          new Date(q.date).getFullYear() === thisYear
+      );
+      return !alreadyThisMonth;
+    }).filter((p, i, arr) =>
+      arr.findIndex((q) => q.name === p.name && q.clientName === p.clientName) === i
+    );
+  }, [projects]);
+
+  const handleRepeatAll = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const now = new Date();
+    recurringReminders.forEach((p) => {
+      addProject({
+        name: p.name,
+        clientName: p.clientName,
+        source: p.source,
+        amount: p.amount,
+        date: now.toISOString(),
+        isPaid: false,
+        description: p.description,
+        currency: p.currency,
+        currencyAmount: p.currencyAmount,
+        currencyRate: p.currencyRate,
+        isRecurring: true,
+      });
+    });
+  };
 
   const availablePeriods = useMemo(() => {
     const keys = new Set<string>();
@@ -105,6 +148,29 @@ export default function HomeScreen() {
       />
       <TaxCard />
       <LimitCard />
+
+      {recurringReminders.length > 0 && (
+        <View style={styles.recurringBanner}>
+          <View style={styles.recurringBannerLeft}>
+            <View style={styles.recurringBannerIcon}>
+              <Feather name="repeat" size={16} color={Colors.primary} />
+            </View>
+            <View style={styles.recurringBannerInfo}>
+              <Text style={styles.recurringBannerTitle}>Повторяющиеся доходы</Text>
+              <Text style={styles.recurringBannerSub}>
+                {recurringReminders.length} {recurringReminders.length === 1 ? "источник" : recurringReminders.length <= 4 ? "источника" : "источников"} не добавлено за этот месяц
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.recurringBannerBtn}
+            onPress={handleRepeatAll}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.recurringBannerBtnText}>Добавить все</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
@@ -383,6 +449,58 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  recurringBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.primary + "12",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.primary + "33",
+    padding: 12,
+    marginTop: 10,
+    gap: 10,
+  },
+  recurringBannerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  recurringBannerIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + "20",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  recurringBannerInfo: {
+    flex: 1,
+  },
+  recurringBannerTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: Colors.primary,
+  },
+  recurringBannerSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.primary + "AA",
+    marginTop: 1,
+  },
+  recurringBannerBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  recurringBannerBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: "#fff",
   },
   empty: {
     alignItems: "center",

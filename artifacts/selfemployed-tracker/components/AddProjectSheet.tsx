@@ -53,6 +53,7 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
   const [currency, setCurrency] = useState<Currency>("RUB");
   const [currencyRate, setCurrencyRate] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [webDateStr, setWebDateStr] = useState(new Date().toISOString().slice(0, 10));
@@ -71,6 +72,7 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrency(projectToEdit.currency ?? "RUB");
         setCurrencyRate(projectToEdit.currencyRate?.toString() ?? "");
         setIsRecurring(projectToEdit.isRecurring ?? false);
+        setReceiptSent(projectToEdit.receiptSent ?? false);
         const d = new Date(projectToEdit.date);
         setDate(d);
         setWebDateStr(d.toISOString().slice(0, 10));
@@ -84,6 +86,7 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrency("RUB");
         setCurrencyRate("");
         setIsRecurring(false);
+        setReceiptSent(false);
         const today = new Date();
         setDate(today);
         setWebDateStr(today.toISOString().slice(0, 10));
@@ -134,6 +137,7 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
       currencyAmount,
       currencyRate: rate,
       isRecurring,
+      receiptSent,
       date: finalDate.toISOString(),
     };
 
@@ -352,6 +356,30 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               </View>
               <View style={[styles.toggle, isRecurring && styles.toggleActive]}>
                 <View style={[styles.toggleThumb, isRecurring && styles.toggleThumbActive]} />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Чек ФНС «Мой налог»</Text>
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => setReceiptSent((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.toggleInfo}>
+                <Feather
+                  name="file-text"
+                  size={18}
+                  color={receiptSent ? Colors.primaryLight : Colors.textMuted}
+                />
+                <View>
+                  <Text style={styles.toggleText}>
+                    {receiptSent ? "Чек выдан клиенту" : "Чек не выдан"}
+                  </Text>
+                  <Text style={styles.toggleSub}>Самозанятый обязан выдать чек</Text>
+                </View>
+              </View>
+              <View style={[styles.toggle, receiptSent && styles.toggleActive]}>
+                <View style={[styles.toggleThumb, receiptSent && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
 

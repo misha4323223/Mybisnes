@@ -62,7 +62,7 @@ export default function CalculatorScreen() {
           activeOpacity={0.75}
         >
           <Text style={[styles.typeLabel, !isLegal && styles.typeLabelActive]}>
-            Физ. лицо · 4%
+            Физ. лицо · {(taxRate * 100).toFixed(0)}%
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
