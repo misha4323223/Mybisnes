@@ -11,7 +11,10 @@ export function TaxCard() {
   const [added, setAdded] = useState(false);
 
   const now = new Date();
-  const nextPaymentDate = new Date(now.getFullYear(), now.getMonth() + 1, 25);
+  const deadline25 = new Date(now.getFullYear(), now.getMonth(), 25, 23, 59, 59);
+  const nextPaymentDate = now > deadline25
+    ? new Date(now.getFullYear(), now.getMonth() + 1, 25, 23, 59, 59)
+    : deadline25;
   const daysLeft = Math.ceil(
     (nextPaymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   );

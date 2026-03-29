@@ -8,6 +8,7 @@ import React, {
 } from "react";
 
 export type IncomeSource = "project" | "subscription" | "one-time" | "other";
+export type Currency = "RUB" | "USD" | "EUR" | "USDT";
 
 export interface Project {
   id: string;
@@ -18,6 +19,11 @@ export interface Project {
   date: string;
   isPaid: boolean;
   description?: string;
+  receiptSent?: boolean;
+  currency?: Currency;
+  currencyAmount?: number;
+  currencyRate?: number;
+  isRecurring?: boolean;
 }
 
 export interface TaxPayment {
@@ -48,6 +54,8 @@ interface AppContextType {
   setTaxRate: (rate: number) => Promise<void>;
   estimatedTax: number;
   loading: boolean;
+  exportData: () => Promise<string>;
+  importData: (json: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -165,6 +173,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const exportData = useCallback(async (): Promise<string> => {
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      projects,
+      taxPayments,
+      taxRate,
+    };
+    return JSON.stringify(data, null, 2);
+  }, [projects, taxPayments, taxRate]);
+
+  const importData = useCallback(async (json: string): Promise<void> => {
+    const data = JSON.parse(json);
+    if (!data.projects || !Array.isArray(data.projects)) {
+      throw new Error("Неверный формат файла резервной копии");
+    }
+    await saveProjects(data.projects);
+    if (data.taxPayments && Array.isArray(data.taxPayments)) {
+      await saveTax(data.taxPayments);
+    }
+    if (data.taxRate && typeof data.taxRate === "number") {
+      await setTaxRate(data.taxRate);
+    }
+  }, [saveProjects, saveTax, setTaxRate]);
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -223,6 +256,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setTaxRate,
         estimatedTax,
         loading,
+        exportData,
+        importData,
       }}
     >
       {children}

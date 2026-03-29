@@ -1,5 +1,5 @@
 import Colors from "@/constants/colors";
-import { IncomeSource, Project, useApp } from "@/context/AppContext";
+import { Currency, IncomeSource, Project, useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
@@ -30,6 +30,13 @@ const SOURCES: { key: IncomeSource; label: string }[] = [
   { key: "other", label: "Другое" },
 ];
 
+const CURRENCIES: { key: Currency; symbol: string; label: string }[] = [
+  { key: "RUB", symbol: "₽", label: "Рубли" },
+  { key: "USD", symbol: "$", label: "Доллары" },
+  { key: "EUR", symbol: "€", label: "Евро" },
+  { key: "USDT", symbol: "₮", label: "USDT" },
+];
+
 export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
   const { addProject, updateProject } = useApp();
   const insets = useSafeAreaInsets();
@@ -42,16 +49,24 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
   const [source, setSource] = useState<IncomeSource>("project");
   const [isPaid, setIsPaid] = useState(false);
   const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState<Currency>("RUB");
+  const [currencyRate, setCurrencyRate] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
 
   useEffect(() => {
     if (visible) {
       if (projectToEdit) {
         setName(projectToEdit.name);
         setClientName(projectToEdit.clientName === "Без клиента" ? "" : projectToEdit.clientName);
-        setAmount(projectToEdit.amount.toString());
+        setAmount(projectToEdit.currency && projectToEdit.currency !== "RUB"
+          ? (projectToEdit.currencyAmount ?? projectToEdit.amount).toString()
+          : projectToEdit.amount.toString());
         setSource(projectToEdit.source);
         setIsPaid(projectToEdit.isPaid);
         setDescription(projectToEdit.description ?? "");
+        setCurrency(projectToEdit.currency ?? "RUB");
+        setCurrencyRate(projectToEdit.currencyRate?.toString() ?? "");
+        setIsRecurring(projectToEdit.isRecurring ?? false);
       } else {
         setName("");
         setClientName("");
@@ -59,6 +74,9 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setSource("project");
         setIsPaid(false);
         setDescription("");
+        setCurrency("RUB");
+        setCurrencyRate("");
+        setIsRecurring(false);
       }
     }
   }, [visible, projectToEdit]);
@@ -68,36 +86,55 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
       Alert.alert("Укажите название");
       return;
     }
-    const amt = parseFloat(amount.replace(",", "."));
-    if (!amount || isNaN(amt) || amt <= 0) {
+    const rawAmt = parseFloat(amount.replace(",", "."));
+    if (!amount || isNaN(rawAmt) || rawAmt <= 0) {
       Alert.alert("Укажите корректную сумму");
       return;
     }
 
+    let finalAmount = rawAmt;
+    let currencyAmount: number | undefined;
+    let rate: number | undefined;
+
+    if (currency !== "RUB") {
+      const r = parseFloat(currencyRate.replace(",", "."));
+      if (!currencyRate || isNaN(r) || r <= 0) {
+        Alert.alert("Укажите курс обмена к рублю");
+        return;
+      }
+      currencyAmount = rawAmt;
+      rate = r;
+      finalAmount = Math.round(rawAmt * r);
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const payload = {
+      name: name.trim(),
+      clientName: clientName.trim() || "Без клиента",
+      amount: finalAmount,
+      source,
+      isPaid,
+      description: description.trim(),
+      currency: currency !== "RUB" ? currency : undefined,
+      currencyAmount,
+      currencyRate: rate,
+      isRecurring,
+    };
+
     if (isEdit && projectToEdit) {
-      updateProject(projectToEdit.id, {
-        name: name.trim(),
-        clientName: clientName.trim() || "Без клиента",
-        amount: amt,
-        source,
-        isPaid,
-        description: description.trim(),
-      });
+      updateProject(projectToEdit.id, payload);
     } else {
       addProject({
-        name: name.trim(),
-        clientName: clientName.trim() || "Без клиента",
-        amount: amt,
-        source,
+        ...payload,
         date: new Date().toISOString(),
-        isPaid,
-        description: description.trim(),
       });
     }
     onClose();
   };
+
+  const isForeign = currency !== "RUB";
+  const currSymbol = CURRENCIES.find(c => c.key === currency)?.symbol ?? "₽";
 
   return (
     <Modal
@@ -143,7 +180,26 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               onChangeText={setClientName}
             />
 
-            <Text style={styles.fieldLabel}>Сумма (₽)</Text>
+            <Text style={styles.fieldLabel}>Валюта</Text>
+            <View style={styles.currencyRow}>
+              {CURRENCIES.map((c) => (
+                <TouchableOpacity
+                  key={c.key}
+                  style={[styles.currencyChip, currency === c.key && styles.currencyChipActive]}
+                  onPress={() => setCurrency(c.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.currencySymbol, currency === c.key && styles.currencySymbolActive]}>
+                    {c.symbol}
+                  </Text>
+                  <Text style={[styles.currencyLabel, currency === c.key && styles.currencyLabelActive]}>
+                    {c.key}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>Сумма ({currSymbol})</Text>
             <TextInput
               style={styles.input}
               placeholder="0"
@@ -152,6 +208,28 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               onChangeText={setAmount}
               keyboardType="numeric"
             />
+
+            {isForeign && (
+              <>
+                <Text style={styles.fieldLabel}>Курс к рублю (1 {currency} = ? ₽)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Например: 91.5"
+                  placeholderTextColor={Colors.textMuted}
+                  value={currencyRate}
+                  onChangeText={setCurrencyRate}
+                  keyboardType="numeric"
+                />
+                {amount && currencyRate && !isNaN(parseFloat(amount)) && !isNaN(parseFloat(currencyRate)) && (
+                  <View style={styles.convertHint}>
+                    <Feather name="refresh-cw" size={12} color={Colors.primary} />
+                    <Text style={styles.convertHintText}>
+                      = {Math.round(parseFloat(amount) * parseFloat(currencyRate)).toLocaleString("ru-RU")} ₽ (для налога)
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
 
             <Text style={styles.fieldLabel}>Тип дохода</Text>
             <View style={styles.sourceRow}>
@@ -195,6 +273,32 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               </View>
               <View style={[styles.toggle, isPaid && styles.toggleActive]}>
                 <View style={[styles.toggleThumb, isPaid && styles.toggleThumbActive]} />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Повторяющийся доход</Text>
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => setIsRecurring((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.toggleInfo}>
+                <Feather
+                  name="repeat"
+                  size={18}
+                  color={isRecurring ? Colors.primary : Colors.textMuted}
+                />
+                <View>
+                  <Text style={styles.toggleText}>
+                    {isRecurring ? "Повторяется ежемесячно" : "Разовый доход"}
+                  </Text>
+                  {isRecurring && (
+                    <Text style={styles.toggleSub}>Напомним добавить в следующем месяце</Text>
+                  )}
+                </View>
+              </View>
+              <View style={[styles.toggle, isRecurring && styles.toggleActive]}>
+                <View style={[styles.toggleThumb, isRecurring && styles.toggleThumbActive]} />
               </View>
             </TouchableOpacity>
 
@@ -283,6 +387,55 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: "top",
   },
+  currencyRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  currencyChip: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    gap: 2,
+  },
+  currencyChipActive: {
+    backgroundColor: Colors.primary + "12",
+    borderColor: Colors.primary,
+  },
+  currencySymbol: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: Colors.textMuted,
+  },
+  currencySymbolActive: {
+    color: Colors.primary,
+  },
+  currencyLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  currencyLabelActive: {
+    color: Colors.primary,
+  },
+  convertHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    backgroundColor: Colors.primary + "10",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  convertHintText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.primary,
+  },
   sourceRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -322,11 +475,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flex: 1,
   },
   toggleText: {
     fontFamily: "Inter_500Medium",
     fontSize: 15,
     color: Colors.textPrimary,
+  },
+  toggleSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   toggle: {
     width: 44,
@@ -335,6 +495,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
     justifyContent: "center",
     paddingHorizontal: 2,
+    flexShrink: 0,
   },
   toggleActive: {
     backgroundColor: Colors.primaryLight,

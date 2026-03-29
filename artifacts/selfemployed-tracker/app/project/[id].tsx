@@ -31,9 +31,15 @@ const sourceIcons: Record<string, string> = {
   other: "more-horizontal",
 };
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  USDT: "₮",
+};
+
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, updateProject, deleteProject } = useApp();
+  const { projects, updateProject, deleteProject, addProject } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -66,9 +72,17 @@ export default function ProjectDetailScreen() {
   const tax = Math.round(project.amount * 0.04);
   const net = project.amount - tax;
 
+  const hasForeignCurrency = project.currency && project.currency !== "RUB";
+  const currSymbol = hasForeignCurrency ? (CURRENCY_SYMBOLS[project.currency!] ?? project.currency) : "₽";
+
   const handleTogglePaid = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     updateProject(project.id, { isPaid: !project.isPaid });
+  };
+
+  const handleToggleReceipt = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateProject(project.id, { receiptSent: !project.receiptSent });
   };
 
   const handleDelete = () => {
@@ -84,6 +98,36 @@ export default function ProjectDetailScreen() {
         },
       },
     ]);
+  };
+
+  const handleRepeatThisMonth = () => {
+    const now = new Date();
+    const currentPeriod = `${now.getMonth() + 1}.${now.getFullYear()}`;
+    const alreadyThisMonth = projects.some(
+      (p) => p.name === project.name && p.clientName === project.clientName &&
+        new Date(p.date).getMonth() === now.getMonth() &&
+        new Date(p.date).getFullYear() === now.getFullYear() &&
+        p.id !== project.id
+    );
+    if (alreadyThisMonth) {
+      Alert.alert("Уже добавлено", "Похожий доход за этот месяц уже есть.");
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addProject({
+      name: project.name,
+      clientName: project.clientName,
+      source: project.source,
+      amount: project.amount,
+      date: new Date().toISOString(),
+      isPaid: false,
+      description: project.description,
+      currency: project.currency,
+      currencyAmount: project.currencyAmount,
+      currencyRate: project.currencyRate,
+      isRecurring: project.isRecurring,
+    });
+    Alert.alert("Добавлено", "Доход скопирован на текущий месяц.");
   };
 
   const handleSaveNote = () => {
@@ -126,11 +170,19 @@ export default function ProjectDetailScreen() {
               />
               <Text style={styles.sourceLabel}>{sourceLabels[project.source] ?? "Другое"}</Text>
             </View>
-            <View style={[styles.statusBadge, project.isPaid ? styles.statusPaid : styles.statusPending]}>
-              <View style={[styles.statusDot, { backgroundColor: project.isPaid ? Colors.primaryLight : Colors.accent }]} />
-              <Text style={[styles.statusText, { color: project.isPaid ? Colors.primaryLight : Colors.accent }]}>
-                {project.isPaid ? "Получено" : "Ожидается"}
-              </Text>
+            <View style={styles.badgeRow}>
+              {project.isRecurring && (
+                <View style={styles.recurringBadge}>
+                  <Feather name="repeat" size={11} color={Colors.primary} />
+                  <Text style={styles.recurringBadgeText}>Повтор</Text>
+                </View>
+              )}
+              <View style={[styles.statusBadge, project.isPaid ? styles.statusPaid : styles.statusPending]}>
+                <View style={[styles.statusDot, { backgroundColor: project.isPaid ? Colors.primaryLight : Colors.accent }]} />
+                <Text style={[styles.statusText, { color: project.isPaid ? Colors.primaryLight : Colors.accent }]}>
+                  {project.isPaid ? "Получено" : "Ожидается"}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -139,7 +191,15 @@ export default function ProjectDetailScreen() {
 
           <View style={styles.amountRow}>
             <Text style={styles.amountLabel}>Сумма</Text>
-            <Text style={styles.amountValue}>{project.amount.toLocaleString("ru-RU")} ₽</Text>
+            <View style={styles.amountRight}>
+              {hasForeignCurrency && (
+                <Text style={styles.amountForeign}>
+                  {currSymbol}{project.currencyAmount?.toLocaleString("ru-RU")}
+                  {project.currencyRate ? ` × ${project.currencyRate}` : ""}
+                </Text>
+              )}
+              <Text style={styles.amountValue}>{project.amount.toLocaleString("ru-RU")} ₽</Text>
+            </View>
           </View>
 
           <Text style={styles.dateText}>{fullDate}</Text>
@@ -166,6 +226,46 @@ export default function ProjectDetailScreen() {
               {net.toLocaleString("ru-RU")} ₽
             </Text>
           </View>
+        </View>
+
+        <View style={styles.actionsCard}>
+          <Text style={styles.cardTitle}>Действия</Text>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { borderColor: project.receiptSent ? Colors.primaryLight + "44" : Colors.border }]}
+            onPress={handleToggleReceipt}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: project.receiptSent ? "#E8F5E9" : Colors.surfaceAlt }]}>
+              <Feather name="file-text" size={16} color={project.receiptSent ? Colors.primaryLight : Colors.textMuted} />
+            </View>
+            <View style={styles.actionInfo}>
+              <Text style={styles.actionTitle}>Чек в ФНС «Мой налог»</Text>
+              <Text style={[styles.actionSub, { color: project.receiptSent ? Colors.primaryLight : Colors.textMuted }]}>
+                {project.receiptSent ? "Чек выдан клиенту" : "Не забудьте выдать чек"}
+              </Text>
+            </View>
+            <View style={[styles.checkbox, project.receiptSent && styles.checkboxChecked]}>
+              {project.receiptSent && <Feather name="check" size={13} color="#fff" />}
+            </View>
+          </TouchableOpacity>
+
+          {project.isRecurring && (
+            <TouchableOpacity
+              style={[styles.actionRow, { marginTop: 8 }]}
+              onPress={handleRepeatThisMonth}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: Colors.primary + "15" }]}>
+                <Feather name="copy" size={16} color={Colors.primary} />
+              </View>
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionTitle}>Повторить за этот месяц</Text>
+                <Text style={styles.actionSub}>Создать копию для текущего месяца</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.noteCard}>
@@ -304,6 +404,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.primary,
   },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+  },
+  recurringBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.primary + "15",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  recurringBadgeText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.primary,
+  },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -349,6 +468,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  amountRight: {
+    alignItems: "flex-end",
+  },
+  amountForeign: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 2,
+  },
   amountValue: {
     fontFamily: "Inter_700Bold",
     fontSize: 24,
@@ -367,6 +495,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     gap: 4,
+  },
+  actionsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    padding: 12,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  actionSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryLight,
   },
   cardTitle: {
     fontFamily: "Inter_600SemiBold",

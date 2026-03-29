@@ -214,7 +214,12 @@ export default function TaxScreen() {
         </View>
       }
       renderItem={({ item }) => (
-        <View style={styles.taxItem}>
+        <TouchableOpacity
+          style={styles.taxItem}
+          onLongPress={() => handleDelete(item.id)}
+          delayLongPress={600}
+          activeOpacity={1}
+        >
           <View style={[styles.statusBadge, item.isPaid ? styles.badgePaid : styles.badgePending]}>
             <Feather
               name={item.isPaid ? "check" : "clock"}
@@ -227,6 +232,7 @@ export default function TaxScreen() {
             <Text style={styles.taxDate}>
               {item.isPaid ? "Оплачено " : "Добавлено "}{new Date(item.date).toLocaleDateString("ru-RU")}
             </Text>
+            <Text style={styles.taxHint}>Удержите для удаления</Text>
           </View>
           <Text style={styles.taxAmt}>{item.amount.toLocaleString("ru-RU")} ₽</Text>
           {!item.isPaid ? (
@@ -248,7 +254,7 @@ export default function TaxScreen() {
               <Feather name="check" size={13} color={Colors.primaryLight} />
             </TouchableOpacity>
           )}
-        </View>
+        </TouchableOpacity>
       )}
       contentContainerStyle={[
         styles.list,
@@ -602,6 +608,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  taxHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+    opacity: 0.6,
   },
   taxAmt: {
     fontFamily: "Inter_700Bold",

@@ -82,15 +82,21 @@ export default function AnalyticsScreen() {
   const paidCount = projects.filter((p) => p.isPaid).length;
   const unpaidCount = projects.filter((p) => !p.isPaid).length;
 
-  const clientMap: Record<string, number> = {};
+  const clientMap: Record<string, { total: number; count: number; unpaid: number; lastDate: string }> = {};
   for (const p of projects) {
-    const name = p.clientName || "Без клиента";
-    clientMap[name] = (clientMap[name] || 0) + p.amount;
+    const nm = p.clientName || "Без клиента";
+    if (!clientMap[nm]) clientMap[nm] = { total: 0, count: 0, unpaid: 0, lastDate: p.date };
+    clientMap[nm].total += p.amount;
+    clientMap[nm].count += 1;
+    if (!p.isPaid) clientMap[nm].unpaid += p.amount;
+    if (p.date > clientMap[nm].lastDate) clientMap[nm].lastDate = p.date;
   }
   const topClients = Object.entries(clientMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-  const maxClient = topClients[0]?.[1] || 1;
+    .sort((a, b) => b[1].total - a[1].total);
+  const maxClient = topClients[0]?.[1].total || 1;
+
+  const receiptPending = projects.filter((p) => p.isPaid && !p.receiptSent).length;
+  const recurringCount = projects.filter((p) => p.isRecurring).length;
 
   if (projects.length === 0) {
     return (
@@ -221,19 +227,61 @@ export default function AnalyticsScreen() {
 
       {topClients.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Топ клиентов</Text>
-          {topClients.map(([clientName, amount], i) => (
-            <View key={clientName} style={styles.clientRow}>
-              <View style={styles.clientRank}>
-                <Text style={styles.clientRankText}>{i + 1}</Text>
+          <Text style={styles.cardTitle}>История по клиентам</Text>
+          {topClients.map(([nm, data], i) => (
+            <View key={nm} style={[styles.clientCard, i < topClients.length - 1 && styles.clientCardBorder]}>
+              <View style={styles.clientHeader}>
+                <View style={[styles.clientAvatar, { backgroundColor: COLORS[i % COLORS.length] + "22" }]}>
+                  <Text style={[styles.clientAvatarText, { color: COLORS[i % COLORS.length] }]}>
+                    {nm.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.clientInfo}>
+                  <Text style={styles.clientName} numberOfLines={1}>{nm}</Text>
+                  <Text style={styles.clientMeta}>
+                    {data.count} {data.count === 1 ? "проект" : data.count <= 4 ? "проекта" : "проектов"} · последний {new Date(data.lastDate).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                  </Text>
+                </View>
+                <Text style={[styles.clientTotal, { color: COLORS[i % COLORS.length] }]}>
+                  {data.total >= 1000 ? `${Math.round(data.total / 1000)}к` : data.total} ₽
+                </Text>
               </View>
-              <Text style={styles.clientName} numberOfLines={1}>{clientName}</Text>
               <View style={styles.clientBarWrap}>
-                <View style={[styles.clientBarFill, { width: `${Math.round((amount / maxClient) * 100)}%`, backgroundColor: COLORS[i % COLORS.length] }]} />
+                <View style={[styles.clientBarFill, { width: `${Math.round((data.total / maxClient) * 100)}%`, backgroundColor: COLORS[i % COLORS.length] }]} />
               </View>
-              <Text style={styles.clientAmount}>{amount >= 1000 ? `${Math.round(amount / 1000)}к` : amount} ₽</Text>
+              {data.unpaid > 0 && (
+                <Text style={styles.clientUnpaid}>Ожидает оплаты: {data.unpaid.toLocaleString("ru-RU")} ₽</Text>
+              )}
             </View>
           ))}
+        </View>
+      )}
+
+      {(receiptPending > 0 || recurringCount > 0) && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Напоминания</Text>
+          {receiptPending > 0 && (
+            <View style={styles.reminderRow}>
+              <View style={[styles.reminderIcon, { backgroundColor: "#FFF3E0" }]}>
+                <Feather name="file-text" size={16} color={Colors.accent} />
+              </View>
+              <View style={styles.reminderInfo}>
+                <Text style={styles.reminderTitle}>Чеки ФНС не выданы</Text>
+                <Text style={styles.reminderSub}>{receiptPending} {receiptPending === 1 ? "доход" : "дохода"} без чека — откройте запись и отметьте</Text>
+              </View>
+            </View>
+          )}
+          {recurringCount > 0 && (
+            <View style={[styles.reminderRow, receiptPending > 0 && { marginTop: 10 }]}>
+              <View style={[styles.reminderIcon, { backgroundColor: Colors.primary + "15" }]}>
+                <Feather name="repeat" size={16} color={Colors.primary} />
+              </View>
+              <View style={styles.reminderInfo}>
+                <Text style={styles.reminderTitle}>Повторяющиеся доходы</Text>
+                <Text style={styles.reminderSub}>{recurringCount} {recurringCount === 1 ? "источник" : "источника"} — можно повторить за текущий месяц</Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -424,51 +472,93 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 20,
   },
-  clientRow: {
+  clientCard: {
+    paddingVertical: 12,
+  },
+  clientCardBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  clientHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  clientRank: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.surfaceAlt,
+  clientAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  clientRankText: {
+  clientAvatarText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    color: Colors.textSecondary,
+    fontSize: 15,
+  },
+  clientInfo: {
+    flex: 1,
   },
   clientName: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
     color: Colors.textPrimary,
-    width: 90,
+  },
+  clientMeta: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  clientTotal: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
     flexShrink: 0,
   },
   clientBarWrap: {
-    flex: 1,
-    height: 8,
+    height: 5,
     backgroundColor: Colors.border,
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: "hidden",
+    marginBottom: 4,
   },
   clientBarFill: {
-    height: 8,
-    borderRadius: 4,
+    height: 5,
+    borderRadius: 3,
   },
-  clientAmount: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: Colors.textPrimary,
+  clientUnpaid: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.accent,
+    marginTop: 2,
+  },
+  reminderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  reminderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
-    width: 52,
-    textAlign: "right",
+  },
+  reminderInfo: {
+    flex: 1,
+  },
+  reminderTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  reminderSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   emptyWrap: {
     flex: 1,
