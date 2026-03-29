@@ -120,16 +120,12 @@ export default function SettingsScreen() {
       const csv = lines.join("\n");
 
       if (Platform.OS === "web") {
-        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `moy-dohod-${month.toLowerCase()}-${year}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        await Clipboard.setStringAsync(csv);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          "Скопировано",
+          `Отчёт за ${month} ${year} скопирован в буфер обмена. Вставьте в Excel или Google Таблицы.`
+        );
       } else {
         await Share.share(
           { message: csv, title: `Отчёт Мой Доход — ${month} ${year}` },
@@ -150,16 +146,12 @@ export default function SettingsScreen() {
       const date = new Date().toISOString().slice(0, 10);
 
       if (Platform.OS === "web") {
-        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `moy-dohod-backup-${date}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        await Clipboard.setStringAsync(json);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          "Скопировано",
+          `Резервная копия от ${date} скопирована в буфер обмена. Сохраните текст в файл .json для восстановления.`
+        );
       } else {
         await Share.share(
           { message: json, title: `Резервная копия Мой Доход ${date}` },
