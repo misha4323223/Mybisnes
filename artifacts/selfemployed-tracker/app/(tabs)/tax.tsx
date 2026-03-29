@@ -226,12 +226,7 @@ export default function TaxScreen() {
         </View>
       }
       renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.taxItem}
-          onLongPress={() => handleDelete(item.id)}
-          activeOpacity={0.85}
-          delayLongPress={400}
-        >
+        <View style={styles.taxItem}>
           <View style={[styles.statusBadge, item.isPaid ? styles.badgePaid : styles.badgePending]}>
             <Feather
               name={item.isPaid ? "check" : "clock"}
@@ -251,15 +246,25 @@ export default function TaxScreen() {
               style={styles.payBtn}
               onPress={() => handlePay(item.id, item.amount)}
               activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.payBtnText}>Оплатил</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.paidTag}>
-              <Text style={styles.paidTagText}>✓</Text>
+            <View style={styles.paidRow}>
+              <View style={styles.paidTag}>
+                <Feather name="check" size={13} color={Colors.primaryLight} />
+              </View>
+              <TouchableOpacity
+                onPress={() => handleDelete(item.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.deleteBtn}
+              >
+                <Feather name="trash-2" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
             </View>
           )}
-        </TouchableOpacity>
+        </View>
       )}
       contentContainerStyle={[
         styles.list,
