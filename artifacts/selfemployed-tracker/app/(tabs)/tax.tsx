@@ -81,23 +81,9 @@ export default function TaxScreen() {
     return map;
   }, [projects, currentYear]);
 
-  const handlePay = (id: string, amount: number) => {
-    Alert.alert(
-      "Подтверждение оплаты",
-      `Отметить налог ${amount.toLocaleString("ru-RU")} ₽ как оплаченный?`,
-      [
-        { text: "Отмена", style: "cancel" },
-        {
-          text: "Оплачено",
-          style: "default",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            markTaxPaid(id);
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+  const handlePay = (id: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    markTaxPaid(id);
   };
 
   const handleDelete = (id: string) => {
@@ -246,7 +232,7 @@ export default function TaxScreen() {
           {!item.isPaid ? (
             <TouchableOpacity
               style={styles.payBtn}
-              onPress={() => handlePay(item.id, item.amount)}
+              onPress={() => handlePay(item.id)}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
