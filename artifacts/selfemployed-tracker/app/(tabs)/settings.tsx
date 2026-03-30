@@ -1,6 +1,7 @@
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { disableNotifications, enableNotifications, getNotificationsEnabled } from "@/utils/notifications";
+import { generateAndSharePdf } from "@/utils/generatePdf";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -16,6 +17,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,6 +39,8 @@ export default function SettingsScreen() {
   const [importText, setImportText] = useState("");
   const [shareModal, setShareModal] = useState<{ title: string; content: string; shareTitle: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   React.useEffect(() => {
     AsyncStorage.getItem("@user_name").then((v) => {
@@ -195,6 +199,34 @@ export default function SettingsScreen() {
     }
   };
 
+  const handlePdfExport = async (period: "month" | "year" | "all") => {
+    if (Platform.OS === "web") {
+      Alert.alert("Недоступно", "PDF-экспорт работает только на мобильном устройстве.");
+      return;
+    }
+    setShowPdfModal(false);
+    setPdfLoading(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const now = new Date();
+      await generateAndSharePdf({
+        projects,
+        taxPayments,
+        taxRate,
+        userName: name || undefined,
+        period,
+        month: now.getMonth(),
+        year: now.getFullYear(),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      if (String(e).includes("dismissed") || e?.message?.includes("dismissed")) return;
+      Alert.alert("Ошибка", String(e?.message ?? e));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const handleClearAll = () => {
     Alert.alert(
       "Удалить все данные",
@@ -318,13 +350,34 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Отчётность</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={handleExport} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowPdfModal(true);
+            }}
+            activeOpacity={0.7}
+            disabled={pdfLoading}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: "#FCE4EC" }]}>
+              {pdfLoading
+                ? <ActivityIndicator size="small" color="#C62828" />
+                : <Feather name="file" size={18} color="#C62828" />
+              }
+            </View>
+            <View style={styles.menuInfo}>
+              <Text style={styles.menuTitle}>Экспорт PDF-отчёта</Text>
+              <Text style={styles.menuSub}>Красивый документ для банка, визы или бухгалтера</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.menuItem, { marginTop: 6 }]} onPress={handleExport} activeOpacity={0.7}>
             <View style={[styles.menuIcon, { backgroundColor: "#E8F5E9" }]}>
               <Feather name="file-text" size={18} color={Colors.primaryLight} />
             </View>
             <View style={styles.menuInfo}>
-              <Text style={styles.menuTitle}>Экспорт отчёта</Text>
-              <Text style={styles.menuSub}>CSV-файл — открывается в Excel и Google Таблицах</Text>
+              <Text style={styles.menuTitle}>Экспорт CSV</Text>
+              <Text style={styles.menuSub}>Открывается в Excel и Google Таблицах</Text>
             </View>
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
@@ -392,6 +445,49 @@ export default function SettingsScreen() {
 
         <Text style={styles.version}>Мой Доход v1.1 · Для самозанятых РФ</Text>
       </ScrollView>
+
+      <Modal
+        visible={showPdfModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPdfModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.pdfOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPdfModal(false)}
+        >
+          <View style={styles.pdfSheet}>
+            <View style={styles.pdfHandle} />
+            <Text style={styles.pdfTitle}>Выберите период</Text>
+            <Text style={styles.pdfSub}>PDF-отчёт будет сформирован и открыт для сохранения или отправки</Text>
+            {[
+              { label: "Текущий месяц", sub: new Date().toLocaleDateString("ru-RU", { month: "long", year: "numeric" }), value: "month" as const, icon: "calendar", color: "#1A6B45" },
+              { label: "Текущий год", sub: String(new Date().getFullYear()), value: "year" as const, icon: "trending-up", color: "#1565C0" },
+              { label: "За всё время", sub: "Все записи в базе", value: "all" as const, icon: "archive", color: "#6A1B9A" },
+            ].map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={styles.pdfOption}
+                onPress={() => handlePdfExport(opt.value)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.pdfOptionIcon, { backgroundColor: opt.color + "18" }]}>
+                  <Feather name={opt.icon as any} size={20} color={opt.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pdfOptionLabel}>{opt.label}</Text>
+                  <Text style={styles.pdfOptionSub}>{opt.sub}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.pdfCancel} onPress={() => setShowPdfModal(false)} activeOpacity={0.75}>
+              <Text style={styles.pdfCancelText}>Отмена</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showImport}
@@ -736,5 +832,75 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#fff",
+  },
+  pdfOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  pdfSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  pdfHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  pdfTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  pdfSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  pdfOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  pdfOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfOptionLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  pdfOptionSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  pdfCancel: {
+    marginTop: 16,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  pdfCancelText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: Colors.textSecondary,
   },
 });
