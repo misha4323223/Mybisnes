@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Dd_-mSKgkfx0PE0ZbJfvI"
+uri = "file://artifacts/selfemployed-tracker/rustore/pepk_out.zip"
+type = "unspecified"
+title = "pepk_out.zip — зашифрованный ключ для RuStore"
