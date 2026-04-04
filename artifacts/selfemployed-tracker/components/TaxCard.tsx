@@ -204,13 +204,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: Colors.primary + "18",
   },
   btnRemove: {
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: "#FFEBEE",
+    backgroundColor: Colors.danger + "18",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceAlt,
   },
   btnDone: {
-    backgroundColor: "#E8F5E9",
+    backgroundColor: Colors.primary + "18",
   },
   btnText: {
     fontFamily: "Inter_600SemiBold",

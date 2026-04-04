@@ -1,15 +1,15 @@
-const primary = "#1A6B45";
-const primaryLight = "#27A165";
-const primaryDark = "#134F34";
-const accent = "#F5A623";
-const danger = "#E53935";
-const background = "#F7F9F7";
-const surface = "#FFFFFF";
-const surfaceAlt = "#EEF5F1";
-const textPrimary = "#1A2E22";
-const textSecondary = "#5A7A6A";
-const textMuted = "#9BB5A8";
-const border = "#D6E8DE";
+const primary = "#10B981";
+const primaryLight = "#34D399";
+const primaryDark = "#059669";
+const accent = "#FF9F2E";
+const danger = "#FF4141";
+const background = "#0B0E12";
+const surface = "#141820";
+const surfaceAlt = "#1C2230";
+const textPrimary = "#EDF2F7";
+const textSecondary = "#8FA5BE";
+const textMuted = "#5E7A96";
+const border = "#1F2A38";
 
 export default {
   primary,

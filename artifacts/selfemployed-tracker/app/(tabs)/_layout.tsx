@@ -49,9 +49,9 @@ function ClassicTabLayout() {
         headerShown: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : isDark ? "#000" : "#fff",
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: isDark ? "#333" : Colors.border,
+          backgroundColor: isIOS ? "transparent" : Colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
@@ -62,15 +62,15 @@ function ClassicTabLayout() {
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={80}
+              tint="dark"
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
+          ) : (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "#000" : "#fff" }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]}
             />
-          ) : null,
+          ),
       }}
     >
       <Tabs.Screen

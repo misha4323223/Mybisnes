@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   hintCard: {
     flexDirection: "row",
     gap: 10,
-    backgroundColor: "#EBF5EE",
+    backgroundColor: Colors.primary + "15",
     borderRadius: 12,
     padding: 14,
     alignItems: "flex-start",

@@ -197,12 +197,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 6,
     marginTop: 12,
-    backgroundColor: "#FFF5F5",
+    backgroundColor: Colors.danger + "18",
     borderRadius: 8,
     padding: 10,
   },
   alertWarn: {
-    backgroundColor: "#FFF8E1",
+    backgroundColor: Colors.accent + "18",
   },
   alertText: {
     flex: 1,

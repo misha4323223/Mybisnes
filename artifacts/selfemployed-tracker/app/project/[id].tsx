@@ -253,7 +253,7 @@ export default function ProjectDetailScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
+                <View style={[styles.actionIcon, { backgroundColor: Colors.primary + "18" }]}>
                   <Feather name="phone" size={16} color={Colors.primaryLight} />
                 </View>
                 <View style={styles.actionInfo}>
@@ -275,8 +275,8 @@ export default function ProjectDetailScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <View style={[styles.actionIcon, { backgroundColor: "#E3F2FD" }]}>
-                  <Feather name="mail" size={16} color="#1565C0" />
+                <View style={[styles.actionIcon, { backgroundColor: Colors.primary + "15" }]}>
+                  <Feather name="mail" size={16} color={Colors.primary} />
                 </View>
                 <View style={styles.actionInfo}>
                   <Text style={styles.actionTitle}>{project.clientEmail}</Text>
@@ -296,7 +296,7 @@ export default function ProjectDetailScreen() {
             onPress={handleToggleReceipt}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: project.receiptSent ? "#E8F5E9" : Colors.surfaceAlt }]}>
+            <View style={[styles.actionIcon, { backgroundColor: project.receiptSent ? Colors.primary + "18" : Colors.surfaceAlt }]}>
               <Feather name="file-text" size={16} color={project.receiptSent ? Colors.primaryLight : Colors.textMuted} />
             </View>
             <View style={styles.actionInfo}>
@@ -337,8 +337,8 @@ export default function ProjectDetailScreen() {
             }}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: "#E3F2FD" }]}>
-              <Feather name="external-link" size={16} color="#1565C0" />
+            <View style={[styles.actionIcon, { backgroundColor: Colors.primary + "15" }]}>
+              <Feather name="external-link" size={16} color={Colors.primary} />
             </View>
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Открыть «Мой налог» ФНС</Text>
@@ -355,8 +355,8 @@ export default function ProjectDetailScreen() {
             }}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: "#F3E5F5" }]}>
-              <Feather name="file-text" size={16} color="#7B1FA2" />
+            <View style={[styles.actionIcon, { backgroundColor: Colors.primary + "18" }]}>
+              <Feather name="file-text" size={16} color={Colors.primary} />
             </View>
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Выставить счёт</Text>
@@ -534,8 +534,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
-  statusPaid: { backgroundColor: "#E8F5E9" },
-  statusPending: { backgroundColor: "#FFF8E1" },
+  statusPaid: { backgroundColor: Colors.primary + "18" },
+  statusPending: { backgroundColor: Colors.accent + "18" },
   statusDot: {
     width: 6,
     height: 6,

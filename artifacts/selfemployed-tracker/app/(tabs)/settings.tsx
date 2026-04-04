@@ -389,7 +389,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionLabel}>Уведомления</Text>
           <View style={styles.card}>
             <View style={styles.notifRow}>
-              <View style={[styles.notifIcon, { backgroundColor: notifOn ? "#EEF2FF" : Colors.surfaceAlt }]}>
+              <View style={[styles.notifIcon, { backgroundColor: notifOn ? Colors.primary + "20" : Colors.surfaceAlt }]}>
                 <Feather name="bell" size={18} color={notifOn ? Colors.primary : Colors.textMuted} />
               </View>
               <View style={styles.notifInfo}>
@@ -422,10 +422,10 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
             disabled={pdfLoading}
           >
-            <View style={[styles.menuIcon, { backgroundColor: "#FCE4EC" }]}>
+            <View style={[styles.menuIcon, { backgroundColor: Colors.danger + "18" }]}>
               {pdfLoading
-                ? <ActivityIndicator size="small" color="#C62828" />
-                : <Feather name="file" size={18} color="#C62828" />
+                ? <ActivityIndicator size="small" color={Colors.danger} />
+                : <Feather name="file" size={18} color={Colors.danger} />
               }
             </View>
             <View style={styles.menuInfo}>
@@ -435,7 +435,7 @@ export default function SettingsScreen() {
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, { marginTop: 6 }]} onPress={handleExport} activeOpacity={0.7}>
-            <View style={[styles.menuIcon, { backgroundColor: "#E8F5E9" }]}>
+            <View style={[styles.menuIcon, { backgroundColor: Colors.primary + "18" }]}>
               <Feather name="file-text" size={18} color={Colors.primaryLight} />
             </View>
             <View style={styles.menuInfo}>
@@ -449,7 +449,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Резервная копия</Text>
           <TouchableOpacity style={styles.menuItem} onPress={handleBackup} activeOpacity={0.7}>
-            <View style={[styles.menuIcon, { backgroundColor: "#E3F2FD" }]}>
+            <View style={[styles.menuIcon, { backgroundColor: Colors.primary + "15" }]}>
               <Feather name="download" size={18} color={Colors.primary} />
             </View>
             <View style={styles.menuInfo}>
@@ -459,7 +459,7 @@ export default function SettingsScreen() {
             <Feather name="chevron-right" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, { marginTop: 6 }]} onPress={() => setShowImport(true)} activeOpacity={0.7}>
-            <View style={[styles.menuIcon, { backgroundColor: "#FFF3E0" }]}>
+            <View style={[styles.menuIcon, { backgroundColor: Colors.accent + "18" }]}>
               <Feather name="upload" size={18} color={Colors.accent} />
             </View>
             <View style={styles.menuInfo}>
@@ -495,7 +495,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Опасная зона</Text>
           <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleClearAll} activeOpacity={0.7}>
-            <View style={[styles.menuIcon, { backgroundColor: "#FFEBEE" }]}>
+            <View style={[styles.menuIcon, { backgroundColor: Colors.danger + "18" }]}>
               <Feather name="trash-2" size={18} color={Colors.danger} />
             </View>
             <View style={styles.menuInfo}>

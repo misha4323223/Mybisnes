@@ -467,8 +467,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   periodChipActive: {
-    backgroundColor: "#1565C0",
-    borderColor: "#1565C0",
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   periodLabel: {
     fontFamily: "Inter_500Medium",

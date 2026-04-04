@@ -345,7 +345,7 @@ export default function AnalyticsScreen() {
           <Text style={styles.cardTitle}>Напоминания</Text>
           {receiptPending > 0 && (
             <View style={styles.reminderRow}>
-              <View style={[styles.reminderIcon, { backgroundColor: "#FFF3E0" }]}>
+              <View style={[styles.reminderIcon, { backgroundColor: Colors.accent + "18" }]}>
                 <Feather name="file-text" size={16} color={Colors.accent} />
               </View>
               <View style={styles.reminderInfo}>

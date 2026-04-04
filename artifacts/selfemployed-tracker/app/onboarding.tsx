@@ -19,7 +19,7 @@ const INFO_SLIDES = [
   {
     id: "1",
     icon: "briefcase" as const,
-    iconBg: "#E8F5E9",
+    iconBg: Colors.primary + "18",
     iconColor: Colors.primary,
     title: "Учёт доходов\nв одном месте",
     text: "Добавляйте доходы от разных клиентов, помечайте оплаченные и ожидаемые — всё под рукой.",
@@ -27,15 +27,15 @@ const INFO_SLIDES = [
   {
     id: "2",
     icon: "percent" as const,
-    iconBg: "#E3F2FD",
-    iconColor: "#1565C0",
+    iconBg: Colors.primary + "15",
+    iconColor: Colors.primaryLight,
     title: "Налог считается\nавтоматически",
     text: "4% с физических лиц, 6% с юридических. Приложение само посчитает сколько нужно заплатить.",
   },
   {
     id: "3",
     icon: "trending-up" as const,
-    iconBg: "#FFF3E0",
+    iconBg: Colors.accent + "18",
     iconColor: Colors.accent,
     title: "Следите за лимитом\n2 400 000 ₽",
     text: "Самозанятые не могут зарабатывать больше 2,4 млн в год. Приложение покажет сколько осталось.",
@@ -43,8 +43,8 @@ const INFO_SLIDES = [
   {
     id: "4",
     icon: "bar-chart-2" as const,
-    iconBg: "#F3E5F5",
-    iconColor: "#6A1B9A",
+    iconBg: Colors.accent + "15",
+    iconColor: Colors.accent,
     title: "Аналитика и\nотчёты",
     text: "Смотрите доходы по месяцам и источникам. Экспортируйте отчёт одной кнопкой.",
   },
