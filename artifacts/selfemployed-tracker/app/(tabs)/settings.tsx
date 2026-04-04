@@ -34,6 +34,10 @@ export default function SettingsScreen() {
 
   const [name, setName] = useState("");
   const [nameLoaded, setNameLoaded] = useState(false);
+  const [inn, setInn] = useState("");
+  const [innLoaded, setInnLoaded] = useState(false);
+  const [sbp, setSbp] = useState("");
+  const [sbpLoaded, setSbpLoaded] = useState(false);
   const [notifOn, setNotifOn] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -47,6 +51,14 @@ export default function SettingsScreen() {
       if (v) setName(v);
       setNameLoaded(true);
     });
+    AsyncStorage.getItem("@user_inn").then((v) => {
+      if (v) setInn(v);
+      setInnLoaded(true);
+    });
+    AsyncStorage.getItem("@user_sbp").then((v) => {
+      if (v) setSbp(v);
+      setSbpLoaded(true);
+    });
     getNotificationsEnabled().then((enabled) => {
       setNotifOn(enabled);
     });
@@ -54,6 +66,18 @@ export default function SettingsScreen() {
 
   const saveName = async () => {
     await AsyncStorage.setItem("@user_name", name);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Сохранено");
+  };
+
+  const saveInn = async () => {
+    await AsyncStorage.setItem("@user_inn", inn);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Сохранено");
+  };
+
+  const saveSbp = async () => {
+    await AsyncStorage.setItem("@user_sbp", sbp);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert("Сохранено");
   };
@@ -280,6 +304,45 @@ export default function SettingsScreen() {
                 <Feather name="check" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.fieldDivider} />
+
+            <Text style={styles.fieldLabel}>ИНН</Text>
+            <View style={styles.nameRow}>
+              <TextInput
+                style={styles.nameInput}
+                value={inn}
+                onChangeText={setInn}
+                placeholder="123456789012"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                maxLength={12}
+                editable={innLoaded}
+              />
+              <TouchableOpacity style={styles.saveBtn} onPress={saveInn} activeOpacity={0.8}>
+                <Feather name="check" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldHint}>Будет отображаться в счёте на оплату</Text>
+
+            <View style={styles.fieldDivider} />
+
+            <Text style={styles.fieldLabel}>Телефон СБП для оплаты</Text>
+            <View style={styles.nameRow}>
+              <TextInput
+                style={styles.nameInput}
+                value={sbp}
+                onChangeText={setSbp}
+                placeholder="+7 999 000 00 00"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="phone-pad"
+                editable={sbpLoaded}
+              />
+              <TouchableOpacity style={styles.saveBtn} onPress={saveSbp} activeOpacity={0.8}>
+                <Feather name="check" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldHint}>Клиент сможет оплатить через СБП по счёту</Text>
           </View>
         </View>
 
@@ -588,6 +651,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
+  },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 14,
+  },
+  fieldHint: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 6,
   },
   notifRow: {
     flexDirection: "row",

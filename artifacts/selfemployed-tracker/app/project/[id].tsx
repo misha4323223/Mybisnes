@@ -1,4 +1,5 @@
 import { AddProjectSheet } from "@/components/AddProjectSheet";
+import { InvoiceSheet } from "@/components/InvoiceSheet";
 import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
@@ -49,6 +50,7 @@ export default function ProjectDetailScreen() {
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(project?.description ?? "");
   const [showEdit, setShowEdit] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -344,6 +346,24 @@ export default function ProjectDetailScreen() {
             </View>
             <Feather name="chevron-right" size={16} color={Colors.textMuted} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { marginTop: 8, borderColor: "#C8A2F8" + "55" }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setShowInvoice(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#F3E5F5" }]}>
+              <Feather name="file-text" size={16} color="#7B1FA2" />
+            </View>
+            <View style={styles.actionInfo}>
+              <Text style={styles.actionTitle}>Выставить счёт</Text>
+              <Text style={styles.actionSub}>Отправить счёт на оплату клиенту</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.noteCard}>
@@ -395,6 +415,11 @@ export default function ProjectDetailScreen() {
         visible={showEdit}
         onClose={() => setShowEdit(false)}
         projectToEdit={project}
+      />
+      <InvoiceSheet
+        visible={showInvoice}
+        onClose={() => setShowInvoice(false)}
+        project={project}
       />
     </View>
   );
