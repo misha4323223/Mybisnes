@@ -14,6 +14,8 @@ export interface Project {
   id: string;
   name: string;
   clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
   source: IncomeSource;
   amount: number;
   date: string;

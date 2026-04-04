@@ -237,6 +237,55 @@ export default function ProjectDetailScreen() {
           </View>
         </View>
 
+        {(project.clientPhone || project.clientEmail) && (
+          <View style={styles.actionsCard}>
+            <Text style={styles.cardTitle}>Контакт клиента</Text>
+            {project.clientPhone && (
+              <TouchableOpacity
+                style={[styles.actionRow]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Linking.openURL(`tel:${project.clientPhone}`).catch(() =>
+                    Alert.alert("Не удалось открыть", "Телефон: " + project.clientPhone)
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
+                  <Feather name="phone" size={16} color={Colors.primaryLight} />
+                </View>
+                <View style={styles.actionInfo}>
+                  <Text style={styles.actionTitle}>{project.clientPhone}</Text>
+                  <Text style={styles.actionSub}>Нажмите чтобы позвонить</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            {project.clientPhone && project.clientEmail && <View style={{ height: 8 }} />}
+            {project.clientEmail && (
+              <TouchableOpacity
+                style={[styles.actionRow]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Linking.openURL(`mailto:${project.clientEmail}`).catch(() =>
+                    Alert.alert("Не удалось открыть", "Email: " + project.clientEmail)
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.actionIcon, { backgroundColor: "#E3F2FD" }]}>
+                  <Feather name="mail" size={16} color="#1565C0" />
+                </View>
+                <View style={styles.actionInfo}>
+                  <Text style={styles.actionTitle}>{project.clientEmail}</Text>
+                  <Text style={styles.actionSub}>Нажмите чтобы написать письмо</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         <View style={styles.actionsCard}>
           <Text style={styles.cardTitle}>Действия</Text>
 

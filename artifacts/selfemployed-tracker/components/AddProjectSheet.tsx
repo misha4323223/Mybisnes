@@ -54,6 +54,8 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
   const [currencyRate, setCurrencyRate] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [receiptSent, setReceiptSent] = useState(false);
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [webDateStr, setWebDateStr] = useState(new Date().toISOString().slice(0, 10));
@@ -73,6 +75,8 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrencyRate(projectToEdit.currencyRate?.toString() ?? "");
         setIsRecurring(projectToEdit.isRecurring ?? false);
         setReceiptSent(projectToEdit.receiptSent ?? false);
+        setClientPhone(projectToEdit.clientPhone ?? "");
+        setClientEmail(projectToEdit.clientEmail ?? "");
         const d = new Date(projectToEdit.date);
         setDate(d);
         setWebDateStr(d.toISOString().slice(0, 10));
@@ -87,6 +91,8 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
         setCurrencyRate("");
         setIsRecurring(false);
         setReceiptSent(false);
+        setClientPhone("");
+        setClientEmail("");
         const today = new Date();
         setDate(today);
         setWebDateStr(today.toISOString().slice(0, 10));
@@ -129,6 +135,8 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
     const payload = {
       name: name.trim(),
       clientName: clientName.trim() || "Без клиента",
+      clientPhone: clientPhone.trim() || undefined,
+      clientEmail: clientEmail.trim() || undefined,
       amount: finalAmount,
       source,
       isPaid,
@@ -194,6 +202,29 @@ export function AddProjectSheet({ visible, onClose, projectToEdit }: Props) {
               placeholderTextColor={Colors.textMuted}
               value={clientName}
               onChangeText={setClientName}
+            />
+
+            <Text style={styles.fieldLabel}>Телефон клиента (необязательно)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="+7 900 000-00-00"
+              placeholderTextColor={Colors.textMuted}
+              value={clientPhone}
+              onChangeText={setClientPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+            />
+
+            <Text style={styles.fieldLabel}>Email клиента (необязательно)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="client@example.com"
+              placeholderTextColor={Colors.textMuted}
+              value={clientEmail}
+              onChangeText={setClientEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
             />
 
             <Text style={styles.fieldLabel}>Дата получения</Text>
