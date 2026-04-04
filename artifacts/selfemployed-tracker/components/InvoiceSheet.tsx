@@ -1,17 +1,18 @@
 import Colors from "@/constants/colors";
 import { Project } from "@/context/AppContext";
+import { generateAndShareInvoicePdf } from "@/utils/generateInvoicePdf";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
   Modal,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,12 +21,6 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { height: SCREEN_H } = Dimensions.get("window");
-
-interface InvoiceSheetProps {
-  visible: boolean;
-  onClose: () => void;
-  project: Project;
-}
 
 function generateInvoiceNumber(): string {
   const now = new Date();
@@ -40,6 +35,12 @@ function fmt(n: number): string {
   return n.toLocaleString("ru-RU") + " ₽";
 }
 
+interface InvoiceSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  project: Project;
+}
+
 export function InvoiceSheet({ visible, onClose, project }: InvoiceSheetProps) {
   const slideAnim = useRef(new Animated.Value(SCREEN_H)).current;
   const [userName, setUserName] = useState("");
@@ -47,6 +48,7 @@ export function InvoiceSheet({ visible, onClose, project }: InvoiceSheetProps) {
   const [userSbp, setUserSbp] = useState("");
   const [invoiceNumber] = useState(generateInvoiceNumber);
   const [copied, setCopied] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -120,23 +122,29 @@ export function InvoiceSheet({ visible, onClose, project }: InvoiceSheetProps) {
     return lines.join("\n");
   };
 
-  const handleShare = async () => {
+  const handleSendPdf = async () => {
+    if (pdfLoading) return;
     try {
-      const text = buildInvoiceText();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      if (Platform.OS === "web") {
-        await Clipboard.setStringAsync(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        await Share.share(
-          { message: text, title: `Счёт ${invoiceNumber}` },
-          { dialogTitle: `Счёт ${invoiceNumber}` }
-        );
-      }
+      setPdfLoading(true);
+      await generateAndShareInvoicePdf({
+        invoiceNumber,
+        invoiceDate,
+        userName,
+        userInn,
+        userSbp,
+        clientName: project.clientName,
+        clientEmail: project.clientEmail,
+        clientPhone: project.clientPhone,
+        projectName: project.name,
+        projectDescription: project.description,
+        amount: project.amount,
+      });
     } catch (e: any) {
-      if (String(e).includes("dismissed")) return;
+      if (String(e).includes("dismissed") || String(e).includes("cancel")) return;
       Alert.alert("Ошибка", String(e?.message ?? e));
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -263,18 +271,43 @@ export function InvoiceSheet({ visible, onClose, project }: InvoiceSheetProps) {
               </Text>
             </View>
           )}
+
+          <View style={styles.pdfHintCard}>
+            <Feather name="file-text" size={14} color="#4F46E5" />
+            <Text style={styles.pdfHintText}>
+              Кнопка «Отправить PDF» создаст красивый счёт-документ, который можно отправить через Telegram, WhatsApp, Email и любые другие приложения
+            </Text>
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.copyBtn} onPress={handleCopy} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.copyBtn}
+            onPress={handleCopy}
+            activeOpacity={0.8}
+            disabled={pdfLoading}
+          >
             <Feather name={copied ? "check" : "copy"} size={16} color={Colors.primary} />
             <Text style={styles.copyBtnText}>{copied ? "Скопировано" : "Копировать"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-            <Feather name="send" size={16} color="#fff" />
-            <Text style={styles.shareBtnText}>
-              {Platform.OS === "web" ? "Копировать текст" : "Отправить"}
-            </Text>
+
+          <TouchableOpacity
+            style={[styles.shareBtn, pdfLoading && styles.shareBtnLoading]}
+            onPress={handleSendPdf}
+            activeOpacity={0.8}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.shareBtnText}>Создаю PDF...</Text>
+              </>
+            ) : (
+              <>
+                <Feather name="send" size={16} color="#fff" />
+                <Text style={styles.shareBtnText}>Отправить PDF</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -506,6 +539,22 @@ const styles = StyleSheet.create({
     color: "#795548",
     lineHeight: 18,
   },
+  pdfHintCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#EEF2FF",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+  pdfHintText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#3730A3",
+    lineHeight: 18,
+  },
   footer: {
     flexDirection: "row",
     gap: 12,
@@ -538,6 +587,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
+  },
+  shareBtnLoading: {
+    opacity: 0.8,
   },
   shareBtnText: {
     fontSize: 15,
