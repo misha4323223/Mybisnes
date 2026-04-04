@@ -10,9 +10,7 @@ export default function InitialRoute() {
   const [target, setTarget] = useState<"onboarding" | "tabs" | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
-      setTarget(val === "true" ? "tabs" : "onboarding");
-    });
+    setTarget("tabs");
   }, []);
 
   if (!target) {
