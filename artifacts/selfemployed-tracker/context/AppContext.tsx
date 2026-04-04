@@ -43,6 +43,7 @@ interface AppContextType {
   updateProject: (id: string, p: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   addTaxPayment: (t: Omit<TaxPayment, "id">) => void;
+  updateTaxPayment: (id: string, changes: Partial<TaxPayment>) => void;
   deleteTaxPayment: (id: string) => void;
   markTaxPaid: (id: string) => void;
   markTaxUnpaid: (id: string) => void;
@@ -137,6 +138,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTaxPayment = useCallback(
     (t: Omit<TaxPayment, "id">) => {
       const newList = [{ ...t, id: generateId() }, ...taxPayments];
+      saveTax(newList);
+    },
+    [taxPayments, saveTax]
+  );
+
+  const updateTaxPayment = useCallback(
+    (id: string, changes: Partial<TaxPayment>) => {
+      const newList = taxPayments.map((t) =>
+        t.id === id ? { ...t, ...changes } : t
+      );
       saveTax(newList);
     },
     [taxPayments, saveTax]
@@ -245,6 +256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateProject,
         deleteProject,
         addTaxPayment,
+        updateTaxPayment,
         deleteTaxPayment,
         markTaxPaid,
         markTaxUnpaid,
