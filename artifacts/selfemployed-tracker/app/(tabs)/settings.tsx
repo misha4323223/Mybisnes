@@ -506,7 +506,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.version}>Мой Доход v2.0 · Для самозанятых РФ</Text>
+        <Text style={styles.version}>Мой Доход v1.1 · Для самозанятых РФ</Text>
       </ScrollView>
 
       <Modal
