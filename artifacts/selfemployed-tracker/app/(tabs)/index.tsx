@@ -12,6 +12,7 @@ import * as Haptics from "expo-haptics";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,14 @@ import {
 } from "react-native";
 
 type FilterType = "all" | "paid" | "unpaid";
+type SortType = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
+
+const SORT_OPTIONS: { key: SortType; label: string; icon: string }[] = [
+  { key: "date_desc", label: "Сначала новые", icon: "arrow-down" },
+  { key: "date_asc", label: "Сначала старые", icon: "arrow-up" },
+  { key: "amount_desc", label: "Сначала дорогие", icon: "trending-down" },
+  { key: "amount_asc", label: "Сначала дешёвые", icon: "trending-up" },
+];
 
 const MONTH_NAMES_SHORT = [
   "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
@@ -47,6 +56,8 @@ export default function HomeScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [periodKey, setPeriodKey] = useState<string>("all");
+  const [sort, setSort] = useState<SortType>("date_desc");
+  const [showSortModal, setShowSortModal] = useState(false);
 
   const recurringReminders = useMemo(() => {
     const now = new Date();
@@ -119,8 +130,23 @@ export default function HomeScreen() {
           p.clientName.toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [projects, filter, search, periodKey]);
+    const sorted = [...list];
+    switch (sort) {
+      case "date_desc":
+        sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        break;
+      case "date_asc":
+        sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        break;
+      case "amount_desc":
+        sorted.sort((a, b) => b.amount - a.amount);
+        break;
+      case "amount_asc":
+        sorted.sort((a, b) => a.amount - b.amount);
+        break;
+    }
+    return sorted;
+  }, [projects, filter, search, periodKey, sort]);
 
   if (loading) {
     return (
@@ -137,6 +163,7 @@ export default function HomeScreen() {
   ];
 
   const isFiltering = search || filter !== "all" || periodKey !== "all";
+  const currentSort = SORT_OPTIONS.find((o) => o.key === sort)!;
 
   const ListHeader = (
     <>
@@ -228,24 +255,40 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
-      <View style={styles.filterRow}>
-        {STATUS_FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterBtn, filter === f.key && styles.filterBtnActive]}
-            onPress={() => setFilter(f.key)}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.filterLabel,
-                filter === f.key && styles.filterLabelActive,
-              ]}
+      <View style={styles.filterSortRow}>
+        <View style={styles.filterRow}>
+          {STATUS_FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterBtn, filter === f.key && styles.filterBtnActive]}
+              onPress={() => setFilter(f.key)}
+              activeOpacity={0.7}
             >
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.filterLabel,
+                  filter === f.key && styles.filterLabelActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={styles.sortBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowSortModal(true);
+          }}
+          activeOpacity={0.75}
+        >
+          <Feather name="sliders" size={14} color={Colors.primary} />
+          <Text style={styles.sortBtnText} numberOfLines={1}>
+            {currentSort.label.split(" ")[1]}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -328,6 +371,47 @@ export default function HomeScreen() {
         onClose={() => setEditingProject(undefined)}
         projectToEdit={editingProject}
       />
+
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSortModal(false)}
+        >
+          <View style={styles.sortModal}>
+            <Text style={styles.sortModalTitle}>Сортировка</Text>
+            {SORT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.sortOption, sort === opt.key && styles.sortOptionActive]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSort(opt.key);
+                  setShowSortModal(false);
+                }}
+                activeOpacity={0.75}
+              >
+                <Feather
+                  name={opt.icon as any}
+                  size={16}
+                  color={sort === opt.key ? Colors.primary : Colors.textSecondary}
+                />
+                <Text style={[styles.sortOptionText, sort === opt.key && styles.sortOptionTextActive]}>
+                  {opt.label}
+                </Text>
+                {sort === opt.key && (
+                  <Feather name="check" size={16} color={Colors.primary} style={styles.sortCheck} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -395,13 +479,19 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontFamily: "Inter_600SemiBold",
   },
-  filterRow: {
+  filterSortRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 4,
   },
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    flex: 1,
+  },
   filterBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: Colors.surface,
@@ -420,6 +510,22 @@ const styles = StyleSheet.create({
   filterLabelActive: {
     color: "#fff",
     fontFamily: "Inter_600SemiBold",
+  },
+  sortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + "15",
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "40",
+  },
+  sortBtnText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.primary,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -549,5 +655,49 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  sortModal: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    gap: 4,
+  },
+  sortModalTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: Colors.textPrimary,
+    marginBottom: 12,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  sortOptionActive: {
+    backgroundColor: Colors.primary + "12",
+  },
+  sortOptionText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  sortOptionTextActive: {
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  sortCheck: {
+    marginLeft: "auto",
   },
 });

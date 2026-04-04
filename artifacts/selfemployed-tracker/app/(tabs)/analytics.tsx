@@ -2,7 +2,7 @@ import Colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -49,41 +49,78 @@ const MONTH_NAMES_FULL = [
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
 ];
 
+const MONTH_NAMES_SHORT = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+function formatBarVal(val: number): string {
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}М`;
+  if (val >= 1_000) return `${Math.round(val / 1_000)}к`;
+  return String(val);
+}
+
 export default function AnalyticsScreen() {
-  const { projects, paidIncome, unpaidIncome, estimatedTax, taxRate, currentMonthIncome, currentMonthPaidIncome } = useApp();
+  const { projects, taxRate } = useApp();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const now = new Date();
+  const currentYear = now.getFullYear();
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    for (const p of projects) {
+      years.add(new Date(p.date).getFullYear());
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [projects]);
+
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+
+  const yearProjects = useMemo(
+    () => projects.filter((p) => new Date(p.date).getFullYear() === selectedYear),
+    [projects, selectedYear]
+  );
+
   const currentMonthName = MONTH_NAMES_FULL[now.getMonth()];
 
+  const currentMonthProjects = useMemo(
+    () => projects.filter((p) => {
+      const d = new Date(p.date);
+      return d.getFullYear() === currentYear && d.getMonth() === now.getMonth();
+    }),
+    [projects]
+  );
+  const currentMonthIncome = currentMonthProjects.reduce((s, p) => s + p.amount, 0);
+  const currentMonthPaidIncome = currentMonthProjects.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const estimatedTax = Math.round(currentMonthPaidIncome * taxRate);
+
+  const yearPaidIncome = yearProjects.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const yearUnpaidIncome = yearProjects.filter((p) => !p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const yearTax = Math.round(yearPaidIncome * taxRate);
+
   const sourceMap: Record<string, number> = {};
-  for (const p of projects) {
+  for (const p of yearProjects) {
     sourceMap[p.source] = (sourceMap[p.source] || 0) + p.amount;
   }
-  const total = Object.values(sourceMap).reduce((a, b) => a + b, 0) || 1;
+  const sourceTotal = Object.values(sourceMap).reduce((a, b) => a + b, 0) || 1;
   const sourceEntries = Object.entries(sourceMap).sort((a, b) => b[1] - a[1]);
 
   const months: Record<string, number> = {};
-  for (const p of projects) {
+  for (const p of yearProjects) {
     const d = new Date(p.date);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     months[key] = (months[key] || 0) + p.amount;
   }
   const sortedMonths = Object.entries(months)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .slice(-6);
+    .sort((a, b) => a[0].localeCompare(b[0]));
   const maxMonth = Math.max(...sortedMonths.map(([, v]) => v), 1);
 
-  const monthNames = [
-    "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
-    "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
-  ];
-
-  const paidCount = projects.filter((p) => p.isPaid).length;
-  const unpaidCount = projects.filter((p) => !p.isPaid).length;
+  const paidCount = yearProjects.filter((p) => p.isPaid).length;
+  const unpaidCount = yearProjects.filter((p) => !p.isPaid).length;
 
   const clientMap: Record<string, { total: number; count: number; unpaid: number; lastDate: string }> = {};
-  for (const p of projects) {
+  for (const p of yearProjects) {
     const nm = p.clientName || "Без клиента";
     if (!clientMap[nm]) clientMap[nm] = { total: 0, count: 0, unpaid: 0, lastDate: p.date };
     clientMap[nm].total += p.amount;
@@ -91,8 +128,7 @@ export default function AnalyticsScreen() {
     if (!p.isPaid) clientMap[nm].unpaid += p.amount;
     if (p.date > clientMap[nm].lastDate) clientMap[nm].lastDate = p.date;
   }
-  const topClients = Object.entries(clientMap)
-    .sort((a, b) => b[1].total - a[1].total);
+  const topClients = Object.entries(clientMap).sort((a, b) => b[1].total - a[1].total);
   const maxClient = topClients[0]?.[1].total || 1;
 
   const receiptPending = projects.filter((p) => p.isPaid && !p.receiptSent).length;
@@ -134,91 +170,138 @@ export default function AnalyticsScreen() {
     >
       <Text style={styles.pageTitle}>Аналитика</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{currentMonthName} — текущий месяц</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>
-              {currentMonthIncome.toLocaleString("ru-RU")} ₽
-            </Text>
-            <Text style={styles.summaryLabel}>Начислено</Text>
-          </View>
-          <View style={[styles.summaryItem, styles.summaryMiddle]}>
-            <Text style={[styles.summaryValue, { color: Colors.primaryLight }]}>
-              {currentMonthPaidIncome.toLocaleString("ru-RU")} ₽
-            </Text>
-            <Text style={styles.summaryLabel}>Получено</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.danger }]}>
-              {estimatedTax.toLocaleString("ru-RU")} ₽
-            </Text>
-            <Text style={styles.summaryLabel}>Налог {(taxRate * 100).toFixed(0)}%</Text>
+      {selectedYear === currentYear && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{currentMonthName} — текущий месяц</Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>
+                {currentMonthIncome.toLocaleString("ru-RU")} ₽
+              </Text>
+              <Text style={styles.summaryLabel}>Начислено</Text>
+            </View>
+            <View style={[styles.summaryItem, styles.summaryMiddle]}>
+              <Text style={[styles.summaryValue, { color: Colors.primaryLight }]}>
+                {currentMonthPaidIncome.toLocaleString("ru-RU")} ₽
+              </Text>
+              <Text style={styles.summaryLabel}>Получено</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryValue, { color: Colors.danger }]}>
+                {estimatedTax.toLocaleString("ru-RU")} ₽
+              </Text>
+              <Text style={styles.summaryLabel}>Налог {(taxRate * 100).toFixed(0)}%</Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
+
+      {availableYears.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.yearRow}
+          style={styles.yearScroll}
+        >
+          {availableYears.map((yr) => (
+            <TouchableOpacity
+              key={yr}
+              style={[styles.yearChip, selectedYear === yr && styles.yearChipActive]}
+              onPress={() => setSelectedYear(yr)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.yearLabel, selectedYear === yr && styles.yearLabelActive]}>
+                {yr}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Все доходы</Text>
+        <Text style={styles.cardTitle}>Итого за {selectedYear} год</Text>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>
-              {(paidIncome + unpaidIncome).toLocaleString("ru-RU")} ₽
+              {(yearPaidIncome + yearUnpaidIncome).toLocaleString("ru-RU")} ₽
             </Text>
             <Text style={styles.summaryLabel}>Всего</Text>
           </View>
           <View style={[styles.summaryItem, styles.summaryMiddle]}>
             <Text style={[styles.summaryValue, { color: Colors.primaryLight }]}>
-              {paidIncome.toLocaleString("ru-RU")} ₽
+              {yearPaidIncome.toLocaleString("ru-RU")} ₽
             </Text>
             <Text style={styles.summaryLabel}>Получено</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: Colors.accent }]}>
-              {unpaidIncome.toLocaleString("ru-RU")} ₽
+            <Text style={[styles.summaryValue, { color: Colors.danger }]}>
+              {yearTax.toLocaleString("ru-RU")} ₽
             </Text>
-            <Text style={styles.summaryLabel}>Ожидает</Text>
+            <Text style={styles.summaryLabel}>Налог за год</Text>
           </View>
         </View>
+        {yearUnpaidIncome > 0 && (
+          <View style={styles.yearUnpaidBadge}>
+            <Feather name="clock" size={13} color={Colors.accent} />
+            <Text style={styles.yearUnpaidText}>
+              Ожидает оплаты: {yearUnpaidIncome.toLocaleString("ru-RU")} ₽
+            </Text>
+          </View>
+        )}
       </View>
 
       {sortedMonths.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Доход по месяцам</Text>
-          <View style={styles.chartArea}>
+          <Text style={styles.cardTitle}>Доход по месяцам · {selectedYear}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.chartArea,
+              { minWidth: sortedMonths.length * 52 },
+            ]}
+          >
             {sortedMonths.map(([key, val]) => {
-              const [yr, mn] = key.split("-");
+              const [, mn] = key.split("-");
               const mIdx = parseInt(mn, 10) - 1;
-              const h = Math.round((val / maxMonth) * 100);
+              const ratio = val / maxMonth;
+              const isCurrentMonth =
+                selectedYear === currentYear && mIdx === now.getMonth();
               return (
                 <View key={key} style={styles.barCol}>
-                  <Text style={styles.barVal}>
-                    {val >= 1000 ? `${Math.round(val / 1000)}к` : val}
-                  </Text>
+                  <Text style={styles.barVal}>{formatBarVal(val)}</Text>
                   <View style={styles.barTrack}>
                     <View
                       style={[
                         styles.barFill,
-                        { height: `${h}%`, backgroundColor: Colors.primary },
+                        {
+                          height: `${Math.max(Math.round(ratio * 100), 4)}%`,
+                          backgroundColor: isCurrentMonth ? Colors.primaryLight : Colors.primary,
+                        },
                       ]}
                     />
                   </View>
-                  <Text style={styles.barLabel}>{monthNames[mIdx]}</Text>
+                  <Text style={[styles.barLabel, isCurrentMonth && styles.barLabelActive]}>
+                    {MONTH_NAMES_SHORT[mIdx]}
+                  </Text>
                 </View>
               );
             })}
-          </View>
+          </ScrollView>
+          <Text style={styles.chartNote}>
+            Максимум: {maxMonth.toLocaleString("ru-RU")} ₽
+          </Text>
         </View>
       )}
 
       {sourceEntries.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>По источникам</Text>
+          <Text style={styles.cardTitle}>По источникам · {selectedYear}</Text>
           {sourceEntries.map(([key, val], i) => (
             <View key={key} style={styles.sourceRow}>
               <View style={[styles.sourceDot, { backgroundColor: COLORS[i % COLORS.length] }]} />
               <Text style={styles.sourceLabel}>{sourceLabels[key] ?? key}</Text>
-              <Bar ratio={val / total} color={COLORS[i % COLORS.length]} />
+              <Bar ratio={val / sourceTotal} color={COLORS[i % COLORS.length]} />
               <Text style={styles.sourceVal}>{val.toLocaleString("ru-RU")} ₽</Text>
             </View>
           ))}
@@ -227,7 +310,7 @@ export default function AnalyticsScreen() {
 
       {topClients.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>История по клиентам</Text>
+          <Text style={styles.cardTitle}>История по клиентам · {selectedYear}</Text>
           {topClients.map(([nm, data], i) => (
             <View key={nm} style={[styles.clientCard, i < topClients.length - 1 && styles.clientCardBorder]}>
               <View style={styles.clientHeader}>
@@ -286,7 +369,7 @@ export default function AnalyticsScreen() {
       )}
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Статус оплаты</Text>
+        <Text style={styles.cardTitle}>Статус оплаты · {selectedYear}</Text>
         <View style={styles.statusRow}>
           <View style={styles.statusItem}>
             <Feather name="check-circle" size={20} color={Colors.primaryLight} />
@@ -302,8 +385,8 @@ export default function AnalyticsScreen() {
           <View style={styles.statusDivider} />
           <View style={styles.statusItem}>
             <Feather name="briefcase" size={20} color={Colors.textSecondary} />
-            <Text style={styles.statusCount}>{projects.length}</Text>
-            <Text style={styles.statusLabel}>Всего</Text>
+            <Text style={styles.statusCount}>{yearProjects.length}</Text>
+            <Text style={styles.statusLabel}>Записей</Text>
           </View>
         </View>
       </View>
@@ -345,11 +428,39 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textSecondary,
     marginBottom: 14,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  yearScroll: {
+    marginBottom: 0,
+  },
+  yearRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 4,
+  },
+  yearChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  yearChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  yearLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  yearLabelActive: {
+    color: "#fff",
   },
   summaryRow: {
     flexDirection: "row",
@@ -366,7 +477,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontFamily: "Inter_700Bold",
-    fontSize: 18,
+    fontSize: 17,
     color: Colors.textPrimary,
   },
   summaryLabel: {
@@ -375,41 +486,69 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 4,
   },
+  yearUnpaidBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    backgroundColor: Colors.accent + "15",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  yearUnpaidText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.accent,
+  },
   chartArea: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 8,
-    height: 120,
+    gap: 6,
+    height: 160,
+    paddingBottom: 2,
   },
   barCol: {
-    flex: 1,
+    width: 44,
     alignItems: "center",
     height: "100%",
     justifyContent: "flex-end",
   },
   barVal: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 9,
-    color: Colors.textMuted,
-    marginBottom: 4,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginBottom: 5,
+    textAlign: "center",
   },
   barTrack: {
     width: "100%",
     flex: 1,
     justifyContent: "flex-end",
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: "hidden",
     backgroundColor: Colors.surfaceAlt,
   },
   barFill: {
     width: "100%",
-    borderRadius: 4,
+    borderRadius: 6,
   },
   barLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.textMuted,
-    marginTop: 6,
+    marginTop: 7,
+  },
+  barLabelActive: {
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primaryLight,
+  },
+  chartNote: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 10,
+    textAlign: "right",
   },
   sourceRow: {
     flexDirection: "row",
