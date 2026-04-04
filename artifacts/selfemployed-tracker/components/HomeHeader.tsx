@@ -20,7 +20,7 @@ function daysUntil25(): number {
 
 export function HomeHeader({ onAddPress }: HomeHeaderProps) {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 52 : insets.top;
 
   const now = new Date();
   const months = [
@@ -30,21 +30,22 @@ export function HomeHeader({ onAddPress }: HomeHeaderProps) {
   const monthLabel = `${months[now.getMonth()]} ${now.getFullYear()}`;
   const days = daysUntil25();
   const isUrgent = days <= 3;
-  const pillColor = isUrgent ? "#FF6B35" : "rgba(255,255,255,0.22)";
 
   return (
-    <View style={[styles.container, { paddingTop: topPad + 12 }]}>
-      <View>
+    <View style={[styles.container, { paddingTop: topPad + 6 }]}>
+      <View style={styles.left}>
         <Text style={styles.label}>Мой доход</Text>
         <Text style={styles.month}>{monthLabel}</Text>
       </View>
       <View style={styles.right}>
-        <View style={[styles.deadlinePill, { backgroundColor: pillColor }]}>
-          <Feather name="clock" size={12} color="#fff" />
-          <Text style={styles.deadlinePillText}>{days}д до 25-го</Text>
+        <View style={[styles.deadlinePill, isUrgent && styles.deadlinePillUrgent]}>
+          <Feather name="clock" size={10} color={isUrgent ? Colors.danger : Colors.textMuted} />
+          <Text style={[styles.deadlinePillText, isUrgent && styles.deadlinePillTextUrgent]}>
+            {days}д до 25-го
+          </Text>
         </View>
         <TouchableOpacity onPress={onAddPress} style={styles.btn} activeOpacity={0.7}>
-          <Feather name="plus" size={22} color="#fff" />
+          <Feather name="plus" size={18} color={Colors.primary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -53,48 +54,65 @@ export function HomeHeader({ onAddPress }: HomeHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.background,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  left: {
+    gap: 1,
   },
   label: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 22,
-    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    color: Colors.textPrimary,
+    letterSpacing: 0.2,
   },
   month: {
     fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 2,
+    fontSize: 11,
+    color: Colors.textMuted,
   },
   right: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   deadlinePill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 20,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  deadlinePillUrgent: {
+    backgroundColor: Colors.danger + "18",
+    borderColor: Colors.danger + "40",
   },
   deadlinePillText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    color: "#fff",
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  deadlinePillTextUrgent: {
+    color: Colors.danger,
   },
   btn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: Colors.primary + "30",
   },
 });
