@@ -30,6 +30,7 @@ export function HomeHeader({ onAddPress }: HomeHeaderProps) {
   const monthLabel = `${months[now.getMonth()]} ${now.getFullYear()}`;
   const days = daysUntil25();
   const isUrgent = days <= 3;
+  const daysColor = isUrgent ? Colors.danger : Colors.primary;
 
   return (
     <View style={[styles.container, { paddingTop: topPad + 6 }]}>
@@ -37,13 +38,16 @@ export function HomeHeader({ onAddPress }: HomeHeaderProps) {
         <Text style={styles.label}>Мой доход</Text>
         <Text style={styles.month}>{monthLabel}</Text>
       </View>
+
       <View style={styles.right}>
-        <View style={[styles.deadlinePill, isUrgent && styles.deadlinePillUrgent]}>
-          <Feather name="clock" size={10} color={isUrgent ? Colors.danger : Colors.textMuted} />
-          <Text style={[styles.deadlinePillText, isUrgent && styles.deadlinePillTextUrgent]}>
-            {days}д до 25-го
-          </Text>
+        <View style={[styles.taxBlock, { borderColor: daysColor + "30", backgroundColor: daysColor + "12" }]}>
+          <View style={styles.taxRow}>
+            <Text style={[styles.daysNum, { color: daysColor }]}>{days}</Text>
+            <Text style={[styles.daysSuffix, { color: daysColor }]}>дн.</Text>
+          </View>
+          <Text style={styles.taxLabel}>до налога</Text>
         </View>
+
         <TouchableOpacity onPress={onAddPress} style={styles.btn} activeOpacity={0.7}>
           <Feather name="plus" size={18} color={Colors.primary} />
         </TouchableOpacity>
@@ -64,7 +68,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   left: {
-    gap: 1,
+    gap: 2,
   },
   label: {
     fontFamily: "Inter_700Bold",
@@ -75,35 +79,40 @@ const styles = StyleSheet.create({
   month: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   right: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  deadlinePill: {
-    flexDirection: "row",
+  taxBlock: {
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  deadlinePillUrgent: {
-    backgroundColor: Colors.danger + "18",
-    borderColor: Colors.danger + "40",
+  taxRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
   },
-  deadlinePillText: {
-    fontFamily: "Inter_500Medium",
+  daysNum: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  daysSuffix: {
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
-    color: Colors.textMuted,
+    lineHeight: 18,
   },
-  deadlinePillTextUrgent: {
-    color: Colors.danger,
+  taxLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginTop: 1,
   },
   btn: {
     width: 34,
