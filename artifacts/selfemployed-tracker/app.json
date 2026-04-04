@@ -2,7 +2,7 @@
   "expo": {
     "name": "Мой Доход",
     "slug": "selfemployed-tracker",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "selfemployed-tracker",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "ru.myincome.selfemployed",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#1A6B45"
